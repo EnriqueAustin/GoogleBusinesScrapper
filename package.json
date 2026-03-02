@@ -1,0 +1,23 @@
+{
+  "name": "google-business-scraper",
+  "version": "1.0.0",
+  "description": "Google Maps business scraper with web dashboard for lead generation",
+  "main": "scrape.js",
+  "scripts": {
+    "scrape": "node scrape.js",
+    "dashboard": "node server.js",
+    "postinstall": "npx playwright install chromium"
+  },
+  "keywords": ["google-maps", "scraper", "lead-generation"],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "chalk": "^4.1.2",
+    "csv-writer": "^1.6.0",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "playwright-core": "^1.50.0",
+    "playwright-extra": "^4.3.6",
+    "puppeteer-extra-plugin-stealth": "^2.11.2"
+  }
+}
