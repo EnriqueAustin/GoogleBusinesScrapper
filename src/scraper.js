@@ -98,19 +98,54 @@ async function extractListingData(page, query) {
         if ((await ratingEl.count()) > 0) {
             const ratingLabel = await ratingEl.first().getAttribute('aria-label');
             if (ratingLabel) {
-                const match = ratingLabel.match(/([\d.]+)/);
-                if (match) rating = match[1];
+                // Match anything like 4.5 or 4,5
+                const match = ratingLabel.match(/([\d.,]+)/);
+                if (match) rating = match[1].replace(',', '.');
             }
         }
+
+        // Fallback for rating if standard selector fails
+        if (rating === 'N/A') {
+            const fallbackRating = page.locator('span[aria-label*="star"], span[aria-label*="ster"]').first();
+            if (await fallbackRating.count() > 0) {
+                const text = await fallbackRating.getAttribute('aria-label');
+                const match = text && text.match(/([\d.,]+)/);
+                if (match) rating = match[1].replace(',', '.');
+            }
+        }
+
         const reviewEl = page.locator(sel.reviewCount);
         if ((await reviewEl.count()) > 0) {
             const reviewLabel = await reviewEl.first().getAttribute('aria-label');
             if (reviewLabel) {
-                const match = reviewLabel.match(/([\d,]+)/);
-                if (match) reviewCount = match[1].replace(/,/g, '');
+                // Remove both commas and periods to handle 1,500 and 1.500 formats
+                const match = reviewLabel.match(/([\d.,]+)/);
+                if (match) reviewCount = match[1].replace(/[,.]/g, '');
+            }
+        }
+
+        // Fallback for review count
+        if (reviewCount === 'N/A') {
+            const fallbackReview = page.locator('span[aria-label*="review"], span[aria-label*="resensies"]').first();
+            if (await fallbackReview.count() > 0) {
+                const text = await fallbackReview.getAttribute('aria-label');
+                const match = text && text.match(/([\d.,]+)/);
+                if (match) reviewCount = match[1].replace(/[,.]/g, '');
             }
         }
     } catch { /* fallback */ }
+
+    // Social Media Extract
+    const socialLinks = [];
+    try {
+        const links = await page.locator('a[data-item-id^="authority"]').all();
+        for (const link of links) {
+            const href = await link.getAttribute('href');
+            if (href && (href.includes('facebook.com') || href.includes('instagram.com') || href.includes('linkedin.com') || href.includes('twitter.com'))) {
+                socialLinks.push(href);
+            }
+        }
+    } catch { /* ignore */ }
 
     const hasWebsite = !!(website && !website.includes('facebook.com') && !website.includes('instagram.com'));
 
@@ -123,8 +158,13 @@ async function extractListingData(page, query) {
         hasWebsite,
         rating,
         reviewCount,
+        socials: socialLinks.join(', '),
         query,
         scrapedAt: new Date().toISOString(),
+        // New enrichment fields
+        techStack: '',
+        seoStatus: '',
+        websiteStatus: '',
     };
 }
 

@@ -12,6 +12,11 @@ const config = {
     betweenQueries: { min: 1800, max: 7200 }, // Seconds between full queries (30m–2h)
   },
 
+  // --- Scraper Features ---
+  features: {
+    enrichWebsitesDuringScrape: false, // Set to true to scan websites during initial scrape (slower)
+  },
+
   // --- Scraping Limits ---
   limits: {
     maxResultsPerQuery: 30,     // Max businesses to extract per query

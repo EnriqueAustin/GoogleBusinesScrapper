@@ -4,6 +4,7 @@ const config = require('./src/config');
 const { log, humanDelay } = require('./src/utils');
 const { scrapeGoogleMaps } = require('./src/scraper');
 const { saveLeads, loadCompletedQueries, markQueryCompleted } = require('./src/exporter');
+const { enrichWebsite } = require('./src/enricher');
 
 /**
  * Load queries from queries.txt or CLI arguments
@@ -58,6 +59,19 @@ async function main() {
 
         // Run the scraper
         const leads = await scrapeGoogleMaps(query);
+
+        // Optionally enrich websites if flag is set
+        if (config.features && config.features.enrichWebsitesDuringScrape) {
+            log('info', `Enriching websites for query "${query}"...`);
+            for (let j = 0; j < leads.length; j++) {
+                if (leads[j].hasWebsite && leads[j].website !== 'None') {
+                    const enrichment = await enrichWebsite(leads[j].website);
+                    leads[j] = { ...leads[j], ...enrichment };
+                    // Small delay between fetches
+                    await humanDelay(1, 2);
+                }
+            }
+        }
 
         if (leads.length > 0) {
             // Save after each query (crash-safe)

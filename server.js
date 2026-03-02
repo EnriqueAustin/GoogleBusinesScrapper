@@ -2,8 +2,11 @@ const express = require('express');
 const fs = require('fs');
 const path = require('path');
 const config = require('./src/config');
+const { enrichWebsite } = require('./src/enricher');
+const { rewriteAllData } = require('./src/exporter');
 
 const app = express();
+app.use(express.json());
 const PORT = config.dashboard.port;
 const JSON_PATH = path.resolve(config.output.dir, config.output.jsonFile);
 const COMPLETED_PATH = path.resolve(config.output.dir, config.output.completedFile);
@@ -102,6 +105,37 @@ app.get('/api/queries', (req, res) => {
         }
     } catch {
         res.json([]);
+    }
+});
+
+/**
+ * POST /api/enrich — enrich a specific lead by website URL
+ */
+app.post('/api/enrich', async (req, res) => {
+    const { website } = req.body;
+    if (!website) {
+        return res.status(400).json({ error: 'Missing website URL' });
+    }
+
+    const leads = loadLeads();
+    const leadIndex = leads.findIndex(l => l.website === website);
+
+    if (leadIndex === -1) {
+        return res.status(404).json({ error: 'Lead not found' });
+    }
+
+    try {
+        const enrichment = await enrichWebsite(website);
+
+        // Update the lead
+        leads[leadIndex] = { ...leads[leadIndex], ...enrichment };
+
+        // Save the updated leads
+        await rewriteAllData(leads);
+
+        res.json(leads[leadIndex]);
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to enrich website' });
     }
 });
 

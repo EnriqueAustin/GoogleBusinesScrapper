@@ -163,6 +163,8 @@ function renderTable() {
         <td>${websiteBadge}</td>
         <td>${lead.rating !== 'N/A' ? lead.rating + ' ★' : '—'}</td>
         <td>${lead.reviewCount !== 'N/A' ? parseInt(lead.reviewCount).toLocaleString() : '—'}</td>
+        <td title="${esc(lead.techStack)}">${esc(lead.techStack || '')}</td>
+        <td title="${esc(lead.seoStatus)}">${esc(lead.seoStatus || '')}</td>
         <td title="${esc(lead.query)}">${esc(lead.query)}</td>
       </tr>
     `;
@@ -198,12 +200,17 @@ function showModal(lead) {
     <div class="detail-row"><span class="detail-label">Address</span><span class="detail-value">${esc(lead.address)}</span></div>
     <div class="detail-row"><span class="detail-label">Phone</span><span class="detail-value">${esc(lead.phone)}</span></div>
     <div class="detail-row"><span class="detail-label">Website</span><span class="detail-value">${lead.website && lead.website !== 'None' ? `<a href="${esc(lead.website)}" target="_blank" rel="noopener">${esc(lead.website)}</a>` : '<span class="badge badge-no">✗ No Website</span>'}</span></div>
+    <div class="detail-row"><span class="detail-label">Website Status</span><span class="detail-value">${esc(lead.websiteStatus) || 'Not Scanned'}</span></div>
+    <div class="detail-row"><span class="detail-label">Tech Stack</span><span class="detail-value">${esc(lead.techStack) || 'Not Scanned'}</span></div>
+    <div class="detail-row"><span class="detail-label">SEO Status</span><span class="detail-value">${esc(lead.seoStatus) || 'Not Scanned'}</span></div>
+    <div class="detail-row"><span class="detail-label">Socials</span><span class="detail-value">${esc(lead.socials) || 'None found'}</span></div>
     <div class="detail-row"><span class="detail-label">Rating</span><span class="detail-value">${lead.rating !== 'N/A' ? lead.rating + ' ★' : '—'} ${lead.reviewCount !== 'N/A' ? `(${parseInt(lead.reviewCount).toLocaleString()} reviews)` : ''}</span></div>
     <div class="detail-row"><span class="detail-label">Query</span><span class="detail-value">${esc(lead.query)}</span></div>
     <div class="detail-row"><span class="detail-label">Scraped</span><span class="detail-value">${lead.scrapedAt ? new Date(lead.scrapedAt).toLocaleString() : '—'}</span></div>
-    <div class="modal-actions">
+    <div class="modal-actions" style="margin-top: 15px;">
       <a href="${mapsUrl}" target="_blank" rel="noopener" class="btn btn-primary">📍 Open in Google Maps</a>
       ${lead.phone && lead.phone !== 'N/A' ? `<a href="tel:${lead.phone}" class="btn btn-ghost">📞 Call</a>` : ''}
+      ${lead.website && lead.website !== 'None' ? `<button onclick="scanWebsite('${esc(lead.website)}')" class="btn btn-accent" id="btnScanWebsite">🔍 Scan Website Data</button>` : ''}
     </div>
   `;
 
@@ -214,14 +221,45 @@ function closeModal() {
     modalOverlay.classList.remove('active');
 }
 
+// ===== Actions =====
+async function scanWebsite(website) {
+    const btn = document.getElementById('btnScanWebsite');
+    if (btn) btn.innerHTML = '⏳ Scanning...';
+    try {
+        const res = await fetch('/api/enrich', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ website })
+        });
+
+        if (!res.ok) throw new Error('Scan failed');
+
+        const updatedLead = await res.json();
+
+        // Update in memory
+        const idx = allLeads.findIndex(l => l.website === website);
+        if (idx !== -1) {
+            allLeads[idx] = updatedLead;
+            applyFilters(); // Re-render table
+            showModal(updatedLead); // Re-render modal
+        }
+    } catch (err) {
+        console.error(err);
+        alert('Failed to scan website. Make sure the server is running.');
+        if (btn) btn.innerHTML = '🔍 Scan Website Data';
+    }
+}
+
 // ===== CSV Export =====
 function exportCsv() {
     if (filteredLeads.length === 0) return;
 
-    const headers = ['Name', 'Category', 'Address', 'Phone', 'Website', 'Has Website', 'Rating', 'Reviews', 'Query', 'Scraped At'];
+    const headers = ['Name', 'Category', 'Address', 'Phone', 'Website', 'Has Website', 'Rating', 'Reviews', 'Website Status', 'Tech Stack', 'SEO Status', 'Social Links', 'Query', 'Scraped At'];
     const rows = filteredLeads.map(l => [
         l.name, l.category, l.address, l.phone, l.website,
-        l.hasWebsite ? 'Yes' : 'No', l.rating, l.reviewCount, l.query, l.scrapedAt
+        l.hasWebsite ? 'Yes' : 'No', l.rating, l.reviewCount,
+        l.websiteStatus || '', l.techStack || '', l.seoStatus || '', l.socials || '',
+        l.query, l.scrapedAt
     ]);
 
     const csvContent = [headers, ...rows]

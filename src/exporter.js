@@ -74,6 +74,10 @@ async function saveLeads(newLeads) {
             { id: 'hasWebsite', title: 'Has Website' },
             { id: 'rating', title: 'Rating' },
             { id: 'reviewCount', title: 'Reviews' },
+            { id: 'socials', title: 'Social Links' },
+            { id: 'websiteStatus', title: 'Website Status' },
+            { id: 'techStack', title: 'Tech Stack' },
+            { id: 'seoStatus', title: 'SEO Status' },
             { id: 'query', title: 'Search Query' },
             { id: 'scrapedAt', title: 'Scraped At' },
         ],
@@ -82,6 +86,38 @@ async function saveLeads(newLeads) {
     log('success', `Saved ${allLeads.length} leads to ${CSV_PATH}`);
 
     return allLeads;
+}
+
+/**
+ * Rewrite all data completely (used by the dashboard when updating a lead)
+ */
+async function rewriteAllData(leads) {
+    ensureOutputDir();
+
+    // Save JSON
+    fs.writeFileSync(JSON_PATH, JSON.stringify(leads, null, 2), 'utf-8');
+
+    // Save CSV
+    const csvWriter = createCsvWriter({
+        path: CSV_PATH,
+        header: [
+            { id: 'name', title: 'Name' },
+            { id: 'category', title: 'Category' },
+            { id: 'address', title: 'Address' },
+            { id: 'phone', title: 'Phone' },
+            { id: 'website', title: 'Website' },
+            { id: 'hasWebsite', title: 'Has Website' },
+            { id: 'rating', title: 'Rating' },
+            { id: 'reviewCount', title: 'Reviews' },
+            { id: 'socials', title: 'Social Links' },
+            { id: 'websiteStatus', title: 'Website Status' },
+            { id: 'techStack', title: 'Tech Stack' },
+            { id: 'seoStatus', title: 'SEO Status' },
+            { id: 'query', title: 'Search Query' },
+            { id: 'scrapedAt', title: 'Scraped At' },
+        ],
+    });
+    await csvWriter.writeRecords(leads);
 }
 
 /**
@@ -117,4 +153,5 @@ module.exports = {
     loadCompletedQueries,
     markQueryCompleted,
     ensureOutputDir,
+    rewriteAllData,
 };
