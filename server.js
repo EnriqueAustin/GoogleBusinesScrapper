@@ -160,6 +160,69 @@ app.post('/api/enrich', async (req, res) => {
     }
 });
 
+/**
+ * POST /api/jobs — add a new scraping query to the queue
+ */
+app.post('/api/jobs', async (req, res) => {
+    const { query, params } = req.body;
+    if (!query) {
+        return res.status(400).json({ error: 'Missing query parameter' });
+    }
+
+    try {
+        const { addScrapeJob } = require('./src/queue/scraperQueue');
+        const job = await addScrapeJob(query, params);
+
+        // Ensure a DB record exists initially
+        await prisma.job.create({
+            data: {
+                id: String(job.id),
+                query: query,
+                status: 'waiting',
+                params: params ? JSON.stringify(params) : null
+            }
+        });
+
+        res.json({ message: 'Job added to queue', jobId: job.id });
+    } catch (err) {
+        console.error('Error adding job to queue:', err);
+        res.status(500).json({ error: 'Failed to add job' });
+    }
+});
+
+/**
+ * GET /api/jobs — list all scraping jobs and their statuses
+ */
+app.get('/api/jobs', async (req, res) => {
+    try {
+        const jobs = await prisma.job.findMany({
+            orderBy: { createdAt: 'desc' }
+        });
+        res.json(jobs);
+    } catch (err) {
+        console.error('Error fetching jobs:', err);
+        res.status(500).json({ error: 'Database error' });
+    }
+});
+
+/**
+ * GET /api/jobs/:id — get a specific job
+ */
+app.get('/api/jobs/:id', async (req, res) => {
+    try {
+        const job = await prisma.job.findUnique({
+            where: { id: req.params.id }
+        });
+        if (!job) {
+            return res.status(404).json({ error: 'Job not found' });
+        }
+        res.json(job);
+    } catch (err) {
+        console.error('Error fetching job:', err);
+        res.status(500).json({ error: 'Database error' });
+    }
+});
+
 app.listen(PORT, () => {
     console.log(`\n  ┌──────────────────────────────────────────────┐`);
     console.log(`  │                                              │`);

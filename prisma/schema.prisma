@@ -33,7 +33,19 @@ model Lead {
 }
 
 model Query {
-  id        Int      @id @default(autoincrement())
+  id        String   @id @default(uuid())
   query     String   @unique
   scrapedAt DateTime @default(now())
+}
+
+model Job {
+  id           String    @id @default(uuid())
+  query        String
+  status       String    @default("waiting") // waiting, active, completed, failed
+  resultsCount Int       @default(0)
+  durationMs   Int?
+  params       String?
+  createdAt    DateTime  @default(now())
+  startedAt    DateTime?
+  completedAt  DateTime?
 }

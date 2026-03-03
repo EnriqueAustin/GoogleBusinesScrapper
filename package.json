@@ -6,6 +6,7 @@
   "scripts": {
     "scrape": "node scrape.js",
     "dashboard": "node server.js",
+    "worker": "node src/worker.js",
     "postinstall": "npx playwright install chromium"
   },
   "keywords": [
@@ -16,10 +17,12 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "bullmq": "^5.70.1",
     "chalk": "^4.1.2",
     "csv-writer": "^1.6.0",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
+    "ioredis": "^5.10.0",
     "playwright-core": "^1.50.0",
     "playwright-extra": "^4.3.6",
     "puppeteer-extra-plugin-stealth": "^2.11.2"
