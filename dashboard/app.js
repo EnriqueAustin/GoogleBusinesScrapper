@@ -4,6 +4,20 @@ let filteredLeads = [];
 let sortField = 'name';
 let sortAsc = true;
 
+// Column visibility state
+const columnConfig = [
+    { id: 'name', label: 'Name', visible: true, locked: true }, // Locked always visible
+    { id: 'category', label: 'Category', visible: true },
+    { id: 'address', label: 'Address', visible: true },
+    { id: 'phone', label: 'Phone', visible: true },
+    { id: 'website', label: 'Website', visible: true },
+    { id: 'rating', label: 'Rating', visible: true },
+    { id: 'reviewCount', label: 'Reviews', visible: true },
+    { id: 'techStack', label: 'Tech Stack', visible: true },
+    { id: 'seoStatus', label: 'SEO', visible: true },
+    { id: 'query', label: 'Query', visible: true }
+];
+
 // ===== DOM Elements =====
 const $ = (id) => document.getElementById(id);
 const statsEls = {
@@ -24,9 +38,12 @@ const resultsCount = $('resultsCount');
 const modalOverlay = $('modalOverlay');
 const modalTitle = $('modalTitle');
 const modalBody = $('modalBody');
+const columnMenu = $('columnMenu');
+const btnToggleColumns = $('btnToggleColumns');
 
 // ===== Initialize =====
 document.addEventListener('DOMContentLoaded', async () => {
+    setupColumnMenu();
     await loadStats();
     await loadLeads();
     setupEventListeners();
@@ -147,27 +164,43 @@ function sortLeads() {
 function renderTable() {
     resultsCount.textContent = `${filteredLeads.length} lead${filteredLeads.length !== 1 ? 's' : ''}`;
 
+    // Update TH visibility
+    columnConfig.forEach(col => {
+        const th = document.querySelector(`th[data-sort="${col.id}"]`);
+        if (th) {
+            th.style.display = col.visible ? '' : 'none';
+        }
+    });
+
     if (filteredLeads.length === 0) {
-        tableBody.innerHTML = '<tr><td colspan="8" class="empty-state">No leads match your filters. Try adjusting them or run the scraper first.</td></tr>';
+        // Count visible columns for colspan
+        const visibleCols = columnConfig.filter(c => c.visible).length;
+        tableBody.innerHTML = `<tr><td colspan="${visibleCols}" class="empty-state">No leads match your filters. Try adjusting them or run the scraper first.</td></tr>`;
         return;
     }
 
     tableBody.innerHTML = filteredLeads.map((lead, idx) => {
         const websiteBadge = getWebsiteBadge(lead);
-        return `
-      <tr data-index="${idx}">
-        <td title="${esc(lead.name)}">${esc(lead.name)}</td>
-        <td title="${esc(lead.category)}">${esc(lead.category)}</td>
-        <td title="${esc(lead.address)}">${esc(lead.address)}</td>
-        <td>${esc(lead.phone)}</td>
-        <td>${websiteBadge}</td>
-        <td>${lead.rating !== 'N/A' ? lead.rating + ' ★' : '—'}</td>
-        <td>${lead.reviewCount !== 'N/A' ? parseInt(lead.reviewCount).toLocaleString() : '—'}</td>
-        <td title="${esc(lead.techStack)}">${esc(lead.techStack || '')}</td>
-        <td title="${esc(lead.seoStatus)}">${esc(lead.seoStatus || '')}</td>
-        <td title="${esc(lead.query)}">${esc(lead.query)}</td>
-      </tr>
-    `;
+        let rowHtml = `<tr data-index="${idx}">`;
+
+        columnConfig.forEach(col => {
+            if (!col.visible) return;
+
+            if (col.id === 'website') {
+                rowHtml += `<td>${websiteBadge}</td>`;
+            } else if (col.id === 'rating') {
+                rowHtml += `<td>${lead.rating !== 'N/A' ? lead.rating + ' ★' : '—'}</td>`;
+            } else if (col.id === 'reviewCount') {
+                rowHtml += `<td>${lead.reviewCount !== 'N/A' ? parseInt(lead.reviewCount).toLocaleString() : '—'}</td>`;
+            } else if (col.id === 'techStack' || col.id === 'seoStatus') {
+                rowHtml += `<td title="${esc(lead[col.id])}">${esc(lead[col.id] || '')}</td>`;
+            } else {
+                rowHtml += `<td title="${esc(lead[col.id])}">${esc(lead[col.id] || '')}</td>`;
+            }
+        });
+
+        rowHtml += `</tr>`;
+        return rowHtml;
     }).join('');
 }
 
@@ -250,6 +283,29 @@ async function scanWebsite(website) {
     }
 }
 
+// ===== Columns Menu =====
+function setupColumnMenu() {
+    columnMenu.innerHTML = '';
+    columnConfig.forEach((col, index) => {
+        if (col.locked) return; // Don't show name column in toggle menu
+
+        const label = document.createElement('label');
+        label.className = 'dropdown-item';
+
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.checked = col.visible;
+        checkbox.addEventListener('change', (e) => {
+            col.visible = e.target.checked;
+            renderTable();
+        });
+
+        label.appendChild(checkbox);
+        label.appendChild(document.createTextNode(col.label));
+        columnMenu.appendChild(label);
+    });
+}
+
 // ===== CSV Export =====
 function exportCsv() {
     if (filteredLeads.length === 0) return;
@@ -288,6 +344,19 @@ function setupEventListeners() {
         applyFilters();
     });
     $('btnExportCsv').addEventListener('click', exportCsv);
+
+    // Column Toggle Menu
+    btnToggleColumns.addEventListener('click', (e) => {
+        e.stopPropagation();
+        columnMenu.classList.toggle('active');
+    });
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+        if (!columnMenu.contains(e.target) && e.target !== btnToggleColumns) {
+            columnMenu.classList.remove('active');
+        }
+    });
 
     // Enter key on search
     filterEls.search.addEventListener('keydown', (e) => {

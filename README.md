@@ -35,6 +35,8 @@ npm run dashboard
 - **CSV + JSON** — exports to both formats with deduplication
 
 ### Dashboard
+- **Website qualification** — scan business websites directly from the UI for Tech Stack (WordPress, Shopify, etc) and SEO metrics
+- **Customizable view** — toggle columns on and off based on what's important
 - **Stats overview** — total leads, no-website prospects, categories
 - **Filter & sort** — by website status, category, rating, search text
 - **Lead details** — click any row for full info + "Open in Google Maps" link
@@ -56,6 +58,7 @@ npm run dashboard
 ## Configuration
 
 All settings are in `src/config.js`:
+- **`features.enrichWebsitesDuringScrape`** — (false by default) set to true to automatically scan websites while scraping to find the tech stack and SEO metadata. Note: this adds a few seconds per lead. Use the dashboard's manual "Scan Website" button instead if scraping speed is a priority!
 - Delay ranges (typing speed, wait times)
 - Max results per query
 - User agent pool

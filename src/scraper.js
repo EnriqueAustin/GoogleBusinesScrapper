@@ -90,41 +90,40 @@ async function extractListingData(page, query) {
         }
     } catch { /* fallback already set */ }
 
-    // Rating
+    // Rating & Reviews
     let rating = 'N/A';
     let reviewCount = 'N/A';
     try {
-        const ratingEl = page.locator(sel.rating);
-        if ((await ratingEl.count()) > 0) {
-            const ratingLabel = await ratingEl.first().getAttribute('aria-label');
-            if (ratingLabel) {
-                // Match anything like 4.5 or 4,5
-                const match = ratingLabel.match(/([\d.,]+)/);
+        const ratingContainer = page.locator('.F7nice').first();
+        if ((await ratingContainer.count()) > 0) {
+            // Rating is typically in an aria-hidden span inside this container
+            const ratingSpan = ratingContainer.locator('span[aria-hidden="true"]').first();
+            if ((await ratingSpan.count()) > 0) {
+                const text = await ratingSpan.innerText();
+                const match = text.match(/([\d.,]+)/);
                 if (match) rating = match[1].replace(',', '.');
             }
-        }
 
-        // Fallback for rating if standard selector fails
-        if (rating === 'N/A') {
-            const fallbackRating = page.locator('span[aria-label*="star"], span[aria-label*="ster"]').first();
-            if (await fallbackRating.count() > 0) {
-                const text = await fallbackRating.getAttribute('aria-label');
+            // If that fails, scrape the first aria-label with star/ster
+            if (rating === 'N/A') {
+                const starSpan = ratingContainer.locator('span[aria-label*="star"], span[aria-label*="ster"]').first();
+                if ((await starSpan.count()) > 0) {
+                    const text = await starSpan.getAttribute('aria-label');
+                    const match = text && text.match(/([\d.,]+)/);
+                    if (match) rating = match[1].replace(',', '.');
+                }
+            }
+
+            // Reviews
+            const reviewSpan = ratingContainer.locator('span[aria-label*="review"], span[aria-label*="resensies"]').first();
+            if ((await reviewSpan.count()) > 0) {
+                const text = await reviewSpan.getAttribute('aria-label');
                 const match = text && text.match(/([\d.,]+)/);
-                if (match) rating = match[1].replace(',', '.');
-            }
-        }
-
-        const reviewEl = page.locator(sel.reviewCount);
-        if ((await reviewEl.count()) > 0) {
-            const reviewLabel = await reviewEl.first().getAttribute('aria-label');
-            if (reviewLabel) {
-                // Remove both commas and periods to handle 1,500 and 1.500 formats
-                const match = reviewLabel.match(/([\d.,]+)/);
                 if (match) reviewCount = match[1].replace(/[,.]/g, '');
             }
         }
 
-        // Fallback for review count
+        // Global Fallback
         if (reviewCount === 'N/A') {
             const fallbackReview = page.locator('span[aria-label*="review"], span[aria-label*="resensies"]').first();
             if (await fallbackReview.count() > 0) {

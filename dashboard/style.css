@@ -1,5 +1,7 @@
 /* ===== CSS Reset & Variables ===== */
-*, *::before, *::after {
+*,
+*::before,
+*::after {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
@@ -81,8 +83,15 @@ body {
 }
 
 @keyframes pulse-glow {
-  0%, 100% { text-shadow: 0 0 8px var(--accent-glow); }
-  50% { text-shadow: 0 0 20px var(--accent-glow), 0 0 40px rgba(99, 102, 241, 0.15); }
+
+  0%,
+  100% {
+    text-shadow: 0 0 8px var(--accent-glow);
+  }
+
+  50% {
+    text-shadow: 0 0 20px var(--accent-glow), 0 0 40px rgba(99, 102, 241, 0.15);
+  }
 }
 
 .logo h1 {
@@ -132,10 +141,21 @@ body {
   border-radius: var(--radius) var(--radius) 0 0;
 }
 
-.stat-total::before { background: linear-gradient(90deg, var(--accent), var(--cyan)); }
-.stat-prospect::before { background: linear-gradient(90deg, var(--red), var(--amber)); }
-.stat-website::before { background: linear-gradient(90deg, var(--green), var(--cyan)); }
-.stat-categories::before { background: linear-gradient(90deg, var(--amber), var(--accent)); }
+.stat-total::before {
+  background: linear-gradient(90deg, var(--accent), var(--cyan));
+}
+
+.stat-prospect::before {
+  background: linear-gradient(90deg, var(--red), var(--amber));
+}
+
+.stat-website::before {
+  background: linear-gradient(90deg, var(--green), var(--cyan));
+}
+
+.stat-categories::before {
+  background: linear-gradient(90deg, var(--amber), var(--accent));
+}
 
 .stat-card:hover {
   transform: translateY(-2px);
@@ -155,10 +175,21 @@ body {
   line-height: 1.2;
 }
 
-.stat-total .stat-value { color: var(--accent-hover); }
-.stat-prospect .stat-value { color: var(--red); }
-.stat-website .stat-value { color: var(--green); }
-.stat-categories .stat-value { color: var(--amber); }
+.stat-total .stat-value {
+  color: var(--accent-hover);
+}
+
+.stat-prospect .stat-value {
+  color: var(--red);
+}
+
+.stat-website .stat-value {
+  color: var(--green);
+}
+
+.stat-categories .stat-value {
+  color: var(--amber);
+}
 
 .stat-label {
   color: var(--text-secondary);
@@ -251,6 +282,7 @@ body {
   background: var(--accent);
   color: white;
 }
+
 .btn-primary:hover {
   background: var(--accent-hover);
   box-shadow: 0 0 16px var(--accent-glow);
@@ -261,6 +293,7 @@ body {
   color: var(--text-secondary);
   border: 1px solid var(--border);
 }
+
 .btn-ghost:hover {
   border-color: var(--border-hover);
   color: var(--text-primary);
@@ -270,9 +303,55 @@ body {
   background: linear-gradient(135deg, var(--green), #059669);
   color: white;
 }
+
 .btn-accent:hover {
   box-shadow: 0 0 16px rgba(16, 185, 129, 0.3);
   transform: translateY(-1px);
+}
+
+/* ===== Dropdown Menu ===== */
+.dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+.dropdown-menu {
+  display: none;
+  position: absolute;
+  right: 0;
+  bottom: 110%;
+  /* Open upwards due to filter bar position */
+  margin-bottom: 0.5rem;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow);
+  padding: 0.75rem;
+  min-width: 180px;
+  z-index: 200;
+}
+
+.dropdown-menu.active {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  animation: modal-in 0.2s ease-out;
+}
+
+.dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--text-primary);
+  font-size: 0.85rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+.dropdown-item input[type="checkbox"] {
+  accent-color: var(--accent);
+  width: 14px;
+  height: 14px;
 }
 
 /* ===== Results Info ===== */
@@ -419,8 +498,15 @@ body {
 }
 
 @keyframes modal-in {
-  from { opacity: 0; transform: scale(0.95) translateY(10px); }
-  to { opacity: 1; transform: scale(1) translateY(0); }
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
 }
 
 .modal-close {
@@ -511,14 +597,17 @@ body {
   .stats-grid {
     grid-template-columns: 1fr;
   }
+
   .header-content {
     flex-direction: column;
     align-items: flex-start;
     gap: 0.25rem;
   }
+
   .filters-bar {
     flex-direction: column;
   }
+
   .filter-group {
     min-width: 100%;
   }
