@@ -1,0 +1,39 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Lead {
+  id            Int      @id @default(autoincrement())
+  name          String
+  category      String?
+  address       String?
+  phone         String?
+  website       String?
+  hasWebsite    Boolean  @default(false)
+  rating        String?
+  reviewCount   String?
+  socials       String?
+  websiteStatus String?
+  techStack     String?
+  seoStatus     String?
+  query         String?
+  scrapedAt     DateTime @default(now())
+
+  @@unique([name, address]) // Deduplication constraint
+  @@index([hasWebsite])
+  @@index([query])
+}
+
+model Query {
+  id        Int      @id @default(autoincrement())
+  query     String   @unique
+  scrapedAt DateTime @default(now())
+}

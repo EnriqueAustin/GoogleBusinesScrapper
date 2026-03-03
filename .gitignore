@@ -20,3 +20,4 @@ Thumbs.db
 
 # Lockfiles
 package-lock.json
+/src/generated/prisma

@@ -1,9 +1,10 @@
+require('dotenv').config();
 const fs = require('fs');
 const path = require('path');
 const config = require('./src/config');
 const { log, humanDelay } = require('./src/utils');
 const { scrapeGoogleMaps } = require('./src/scraper');
-const { saveLeads, loadCompletedQueries, markQueryCompleted } = require('./src/exporter');
+const { saveLeads, loadCompletedQueriesAsync, markQueryCompletedAsync } = require('./src/exporter');
 const { enrichWebsite } = require('./src/enricher');
 
 /**
@@ -43,7 +44,9 @@ async function main() {
     console.log('');
 
     const queries = loadQueries();
-    const completed = loadCompletedQueries();
+
+    // Now loading from DB asynchronously
+    const completed = await loadCompletedQueriesAsync();
     let totalNewLeads = 0;
 
     for (let i = 0; i < queries.length; i++) {
@@ -76,7 +79,9 @@ async function main() {
         if (leads.length > 0) {
             // Save after each query (crash-safe)
             await saveLeads(leads);
-            markQueryCompleted(query);
+
+            // Mark complete in DB
+            await markQueryCompletedAsync(query);
             totalNewLeads += leads.length;
 
             // Stats for this query
@@ -85,7 +90,7 @@ async function main() {
             log('success', `Query results: ${leads.length} total | ${noSite} NO website (prospects!) | ${withSite} with website`);
         } else {
             log('warn', `No results found for "${query}"`);
-            markQueryCompleted(query);
+            await markQueryCompletedAsync(query);
         }
 
         // Wait between queries (if not the last one)

@@ -3,14 +3,14 @@ const path = require('path');
 const createCsvWriter = require('csv-writer').createObjectCsvWriter;
 const config = require('./config');
 const { log } = require('./utils');
+const { PrismaClient } = require('@prisma/client');
 
+const prisma = new PrismaClient();
 const OUTPUT_DIR = path.resolve(config.output.dir);
 const CSV_PATH = path.join(OUTPUT_DIR, config.output.csvFile);
-const JSON_PATH = path.join(OUTPUT_DIR, config.output.jsonFile);
-const COMPLETED_PATH = path.join(OUTPUT_DIR, config.output.completedFile);
 
 /**
- * Ensure the output directory exists
+ * Ensure the output directory exists for CSV export
  */
 function ensureOutputDir() {
     if (!fs.existsSync(OUTPUT_DIR)) {
@@ -20,49 +20,78 @@ function ensureOutputDir() {
 }
 
 /**
- * Load existing leads from JSON (for deduplication)
- */
-function loadExistingLeads() {
-    try {
-        if (fs.existsSync(JSON_PATH)) {
-            const data = fs.readFileSync(JSON_PATH, 'utf-8');
-            return JSON.parse(data);
-        }
-    } catch (err) {
-        log('warn', `Could not load existing leads: ${err.message}`);
-    }
-    return [];
-}
-
-/**
- * Deduplicate leads by name + address
- */
-function deduplicateLeads(leads) {
-    const seen = new Map();
-    for (const lead of leads) {
-        const key = `${lead.name}|${lead.address}`.toLowerCase();
-        if (!seen.has(key)) {
-            seen.set(key, lead);
-        }
-    }
-    return [...seen.values()];
-}
-
-/**
- * Save leads to both CSV and JSON
+ * Save leads locally and to the PostgreSQL database via Prisma
  */
 async function saveLeads(newLeads) {
+    if (!newLeads || newLeads.length === 0) return [];
+
+    let savedCount = 0;
+
+    // Save to Postgres (upsert based on name + address)
+    for (const lead of newLeads) {
+        try {
+            await prisma.lead.upsert({
+                where: {
+                    name_address: {
+                        name: lead.name,
+                        address: lead.address || 'N/A'
+                    }
+                },
+                update: {
+                    phone: lead.phone,
+                    website: lead.website,
+                    hasWebsite: lead.hasWebsite,
+                    rating: lead.rating,
+                    reviewCount: lead.reviewCount,
+                    socials: lead.socials,
+                    websiteStatus: lead.websiteStatus,
+                    techStack: lead.techStack,
+                    seoStatus: lead.seoStatus,
+                    query: lead.query,
+                },
+                create: {
+                    name: lead.name,
+                    category: lead.category,
+                    address: lead.address || 'N/A',
+                    phone: lead.phone,
+                    website: lead.website,
+                    hasWebsite: lead.hasWebsite,
+                    rating: lead.rating,
+                    reviewCount: lead.reviewCount,
+                    socials: lead.socials,
+                    websiteStatus: lead.websiteStatus,
+                    techStack: lead.techStack,
+                    seoStatus: lead.seoStatus,
+                    query: lead.query,
+                }
+            });
+            savedCount++;
+        } catch (err) {
+            log('error', `Failed to save lead ${lead.name} to DB: ${err.message}`);
+        }
+    }
+
+    log('success', `Saved ${savedCount}/${newLeads.length} leads to PostgreSQL`);
+
+    // Optionally export flat CSV directly from the entire database table
+    try {
+        await exportAllCsv();
+    } catch (e) {
+        log('warn', `CSV export failed: ${e.message}`);
+    }
+
+    return newLeads;
+}
+
+/**
+ * Helper function to dump all DB leads to highly readable generic CSV format
+ */
+async function exportAllCsv() {
     ensureOutputDir();
+    const allLeads = await prisma.lead.findMany({
+        orderBy: { scrapedAt: 'desc' }
+    });
 
-    // Merge with existing leads and deduplicate
-    const existing = loadExistingLeads();
-    const allLeads = deduplicateLeads([...existing, ...newLeads]);
-
-    // Save JSON
-    fs.writeFileSync(JSON_PATH, JSON.stringify(allLeads, null, 2), 'utf-8');
-    log('success', `Saved ${allLeads.length} leads to ${JSON_PATH}`);
-
-    // Save CSV
     const csvWriter = createCsvWriter({
         path: CSV_PATH,
         header: [
@@ -83,75 +112,79 @@ async function saveLeads(newLeads) {
         ],
     });
     await csvWriter.writeRecords(allLeads);
-    log('success', `Saved ${allLeads.length} leads to ${CSV_PATH}`);
-
-    return allLeads;
+    log('success', `Exported ${allLeads.length} total leads to ${CSV_PATH}`);
 }
 
 /**
- * Rewrite all data completely (used by the dashboard when updating a lead)
+ * Re-export all data (used when enrichment is performed sequentially outside the loop)
  */
-async function rewriteAllData(leads) {
-    ensureOutputDir();
-
-    // Save JSON
-    fs.writeFileSync(JSON_PATH, JSON.stringify(leads, null, 2), 'utf-8');
-
-    // Save CSV
-    const csvWriter = createCsvWriter({
-        path: CSV_PATH,
-        header: [
-            { id: 'name', title: 'Name' },
-            { id: 'category', title: 'Category' },
-            { id: 'address', title: 'Address' },
-            { id: 'phone', title: 'Phone' },
-            { id: 'website', title: 'Website' },
-            { id: 'hasWebsite', title: 'Has Website' },
-            { id: 'rating', title: 'Rating' },
-            { id: 'reviewCount', title: 'Reviews' },
-            { id: 'socials', title: 'Social Links' },
-            { id: 'websiteStatus', title: 'Website Status' },
-            { id: 'techStack', title: 'Tech Stack' },
-            { id: 'seoStatus', title: 'SEO Status' },
-            { id: 'query', title: 'Search Query' },
-            { id: 'scrapedAt', title: 'Scraped At' },
-        ],
-    });
-    await csvWriter.writeRecords(leads);
+async function rewriteAllData() {
+    await exportAllCsv();
 }
 
 /**
- * Load completed queries (for resume logic)
+ * Fetch previously completed query strings from Postgres
  */
-function loadCompletedQueries() {
+async function loadCompletedQueriesAsync() {
     try {
-        if (fs.existsSync(COMPLETED_PATH)) {
-            const data = fs.readFileSync(COMPLETED_PATH, 'utf-8');
-            return JSON.parse(data);
-        }
-    } catch {
-        // ignore
+        const queries = await prisma.query.findMany({
+            select: { query: true }
+        });
+        return queries.map(q => q.query);
+    } catch (err) {
+        log('error', `Failed loading completed queries: ${err.message}`);
+        return [];
     }
+}
+
+/**
+ * Synchronous backward-compat wrapper for legacy scrape loop support where needed,
+ * but ideally scrape cycle should use async db interactions over JSON.
+ * We'll use a local cache to keep it synchronous for now if strictly needed 
+ * by unmodified calling routines.
+ */
+let _completedQueriesCache = null;
+function loadCompletedQueries() {
+    if (_completedQueriesCache !== null) return _completedQueriesCache;
+
+    // Fallback block if caller refuses to wait setup.
+    // Real implementation should await loadCompletedQueriesAsync()
+    try {
+        const p = path.join(OUTPUT_DIR, config.output.completedFile);
+        if (fs.existsSync(p)) return JSON.parse(fs.readFileSync(p, 'utf-8'));
+    } catch { }
     return [];
 }
 
 /**
- * Mark a query as completed
+ * Mark a query as completed in the DB
  */
-function markQueryCompleted(query) {
-    ensureOutputDir();
-    const completed = loadCompletedQueries();
-    if (!completed.includes(query)) {
-        completed.push(query);
-        fs.writeFileSync(COMPLETED_PATH, JSON.stringify(completed, null, 2), 'utf-8');
+async function markQueryCompletedAsync(query) {
+    try {
+        await prisma.query.upsert({
+            where: { query },
+            update: {},
+            create: { query }
+        });
+    } catch (err) {
+        log('error', `Failed to mark query completed in DB: ${err.message}`);
     }
 }
 
+function markQueryCompleted(query) {
+    // Fire and forget wrapper for legacy synchronous logic in scrape.js
+    markQueryCompletedAsync(query).catch(() => { });
+}
+
+
 module.exports = {
     saveLeads,
-    loadExistingLeads,
+    loadCompletedQueriesAsync,
     loadCompletedQueries,
+    markQueryCompletedAsync,
     markQueryCompleted,
     ensureOutputDir,
     rewriteAllData,
+    exportAllCsv,
+    prisma
 };
