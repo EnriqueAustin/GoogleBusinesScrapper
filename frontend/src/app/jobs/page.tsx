@@ -1,0 +1,178 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import axios from "axios";
+import { formatDistanceToNow } from "date-fns";
+import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Play, RotateCw } from "lucide-react";
+
+interface Job {
+    id: string;
+    query: string;
+    status: "waiting" | "active" | "completed" | "failed";
+    resultsCount: number;
+    durationMs: number | null;
+    createdAt: string;
+    startedAt: string | null;
+    completedAt: string | null;
+}
+
+export default function JobsPage() {
+    const [jobs, setJobs] = useState<Job[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [newQuery, setNewQuery] = useState("");
+    const [submitting, setSubmitting] = useState(false);
+
+    const fetchJobs = async () => {
+        try {
+            const res = await axios.get("http://localhost:3001/api/jobs");
+            setJobs(res.data);
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchJobs();
+        // Poll every 5 seconds for live updates
+        const interval = setInterval(fetchJobs, 5000);
+        return () => clearInterval(interval);
+    }, []);
+
+    const handleStartJob = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!newQuery.trim()) return;
+
+        setSubmitting(true);
+        try {
+            await axios.post("http://localhost:3001/api/jobs", { query: newQuery });
+            setNewQuery("");
+            await fetchJobs();
+        } catch (err) {
+            console.error("Failed to start job", err);
+            alert("Failed to start job. Is the API running?");
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    const getStatusBadge = (status: Job["status"]) => {
+        switch (status) {
+            case "completed":
+                return <Badge className="bg-emerald-500 hover:bg-emerald-600">Completed</Badge>;
+            case "active":
+                return <Badge className="bg-blue-500 hover:bg-blue-600 animate-pulse">Running</Badge>;
+            case "failed":
+                return <Badge variant="destructive">Failed</Badge>;
+            default:
+                return <Badge variant="secondary">Waiting in Queue</Badge>;
+        }
+    };
+
+    return (
+        <div className="space-y-6 max-w-5xl mx-auto">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div>
+                    <h1 className="text-3xl font-bold tracking-tight">Job Queue</h1>
+                    <p className="text-muted-foreground">Manage background scraping workers.</p>
+                </div>
+            </div>
+
+            <Card>
+                <CardHeader>
+                    <CardTitle>Start New Scrape</CardTitle>
+                    <CardDescription>
+                        Enter a search query to dispatch to the background worker (e.g., "roofers in Chicago").
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <form onSubmit={handleStartJob} className="flex gap-3">
+                        <Input
+                            placeholder="Search query..."
+                            value={newQuery}
+                            onChange={(e) => setNewQuery(e.target.value)}
+                            className="max-w-md"
+                            disabled={submitting}
+                        />
+                        <Button type="submit" disabled={submitting || !newQuery.trim()}>
+                            {submitting ? (
+                                <RotateCw className="mr-2 h-4 w-4 animate-spin" />
+                            ) : (
+                                <Play className="mr-2 h-4 w-4" />
+                            )}
+                            Dispatch Job
+                        </Button>
+                    </form>
+                </CardContent>
+            </Card>
+
+            <div className="space-y-4">
+                <h2 className="text-xl font-semibold tracking-tight">Recent Jobs</h2>
+
+                {loading && jobs.length === 0 ? (
+                    <div className="text-center py-10 text-muted-foreground">Loading queue...</div>
+                ) : jobs.length === 0 ? (
+                    <div className="text-center py-10 border rounded-lg bg-muted/40 text-muted-foreground">
+                        No jobs found in the database.
+                    </div>
+                ) : (
+                    <div className="grid gap-4">
+                        {jobs.map((job) => (
+                            <Card key={job.id} className="overflow-hidden">
+                                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-6 gap-4">
+                                    <div className="space-y-1">
+                                        <div className="flex items-center gap-2">
+                                            <h3 className="font-semibold text-lg">{job.query}</h3>
+                                            {getStatusBadge(job.status)}
+                                        </div>
+                                        <div className="text-sm text-muted-foreground">
+                                            Dispatched {formatDistanceToNow(new Date(job.createdAt), { addSuffix: true })}
+                                        </div>
+                                    </div>
+
+                                    <div className="flex flex-col sm:items-end gap-1 text-sm bg-muted/50 p-3 rounded-md w-full sm:w-auto">
+                                        <div className="flex justify-between sm:justify-end w-full gap-4">
+                                            <span className="text-muted-foreground">Leads Scraped:</span>
+                                            <span className="font-medium">{job.resultsCount}</span>
+                                        </div>
+                                        <div className="flex justify-between sm:justify-end w-full gap-4">
+                                            <span className="text-muted-foreground">Duration:</span>
+                                            <span className="font-medium">
+                                                {job.durationMs ? `${(job.durationMs / 1000).toFixed(1)}s` : "---"}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                                {job.status === "active" && (
+                                    <div className="h-1 w-full bg-secondary overflow-hidden">
+                                        <div className="h-full bg-blue-500 w-1/3 animate-[slide_2s_ease-in-out_infinite]"
+                                            style={{ animation: 'slide 2s infinite linear alternate' }}></div>
+                                    </div>
+                                )}
+                            </Card>
+                        ))}
+                    </div>
+                )}
+            </div>
+
+            <style dangerouslySetInnerHTML={{
+                __html: `
+                @keyframes slide {
+                    0% { transform: translateX(-100%); }
+                    100% { transform: translateX(300%); }
+                }
+            `}} />
+        </div>
+    );
+}

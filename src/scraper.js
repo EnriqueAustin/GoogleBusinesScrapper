@@ -62,7 +62,48 @@ async function extractListingData(page, query) {
     const name = await safeText(page.locator(sel.name));
 
     // Category
-    const category = await safeText(page.locator(sel.category));
+    let category = 'N/A';
+    try {
+        // Method 1: config selector
+        category = await safeText(page.locator(sel.category), '');
+
+        // Method 2: Look for the class commonly used for category next to rating
+        if (!category || category === 'N/A') {
+            category = await page.evaluate(() => {
+                // Often the category is a button inside a div that also contains the rating
+                // Or it's a font-body-medium element with a specific class, usually next to the rating
+                const potentialBtns = Array.from(document.querySelectorAll('button'));
+                for (const btn of potentialBtns) {
+                    if (btn.getAttribute('jsaction') === 'pane.rating.category') {
+                        return btn.innerText.trim();
+                    }
+                }
+
+                // Fallback: finding the text node directly preceding the address or next to rating
+                const ratingLabels = document.querySelectorAll('[aria-label*="stars"]');
+                if (ratingLabels.length > 0) {
+                    const container = ratingLabels[0].closest('.RkPPbb') || ratingLabels[0].parentElement?.parentElement;
+                    if (container) {
+                        const buttons = container.querySelectorAll('button');
+                        if (buttons.length > 0) {
+                            return buttons[buttons.length - 1].innerText.trim();
+                        }
+                    }
+                }
+
+                // Fallback: look for the class `.DkEaL` which often holds the category
+                const dkEls = document.querySelectorAll('button.DkEaL');
+                if (dkEls.length > 0) {
+                    return dkEls[0].innerText.trim();
+                }
+
+                return '';
+            });
+        }
+    } catch (e) {
+        log('error', 'Category extraction failed: ' + e.message);
+    }
+    category = category || 'N/A';
 
     // Address
     let address = 'N/A';

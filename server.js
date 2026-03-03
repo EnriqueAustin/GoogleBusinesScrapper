@@ -1,5 +1,6 @@
 require('dotenv').config();
 const express = require('express');
+const cors = require('cors');
 const path = require('path');
 const config = require('./src/config');
 const { enrichWebsite } = require('./src/enricher');
@@ -7,6 +8,7 @@ const { prisma, exportAllCsv } = require('./src/exporter');
 
 const app = express();
 app.use(express.json());
+app.use(cors());
 const PORT = config.dashboard.port;
 
 // Serve dashboard static files

@@ -80,7 +80,7 @@ const config = {
 
   // --- Dashboard ---
   dashboard: {
-    port: 3000,
+    port: 3001,
   },
 };
 
