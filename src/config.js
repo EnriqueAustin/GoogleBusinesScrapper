@@ -14,7 +14,7 @@ const config = {
 
   // --- Scraper Features ---
   features: {
-    enrichWebsitesDuringScrape: false, // Set to true to scan websites during initial scrape (slower)
+    enrichWebsitesDuringScrape: true, // Set to true to scan websites automatically
   },
 
   // --- Scraping Limits ---

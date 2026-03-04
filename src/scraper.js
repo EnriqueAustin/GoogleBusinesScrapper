@@ -341,6 +341,10 @@ async function scrapeGoogleMaps(query, maxResults) {
         const totalFound = listings.length;
         log('info', `Found ${totalFound} listing cards, will process up to ${max}`);
 
+        // Track seen businesses to avoid processing duplicates within this job
+        const seenBusinesses = new Set();
+        let logIndex = 0;
+
         // Click each listing and extract data
         for (let i = 0; i < Math.min(totalFound, max); i++) {
             try {
@@ -371,9 +375,17 @@ async function scrapeGoogleMaps(query, maxResults) {
                 const data = await extractListingData(page, query);
 
                 if (data.name !== 'N/A') {
-                    results.push(data);
-                    const status = data.hasWebsite ? chalk.green('HAS WEBSITE') : chalk.red('NO WEBSITE');
-                    log('lead', `[${i + 1}/${Math.min(totalFound, max)}] ${data.name} — ${status}`);
+                    // Deduplicate within this scrape session using name + address
+                    const dedupKey = `${data.name}|${data.address}`;
+                    if (seenBusinesses.has(dedupKey)) {
+                        log('info', `[${i + 1}] Skipping duplicate: ${data.name}`);
+                    } else {
+                        seenBusinesses.add(dedupKey);
+                        results.push(data);
+                        logIndex++;
+                        const status = data.hasWebsite ? chalk.green('HAS WEBSITE') : chalk.red('NO WEBSITE');
+                        log('lead', `[${logIndex}/${Math.min(totalFound, max)}] ${data.name} — ${status}`);
+                    }
                 }
 
                 // Close detail panel
