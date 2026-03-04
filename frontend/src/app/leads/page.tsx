@@ -17,7 +17,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import {
     ExternalLink, Search, Star, Download, Eye, Zap, Trash2,
     ArrowUpDown, ArrowUp, ArrowDown, Filter, Upload, Copy, RefreshCw,
-    History, ChevronDown, ChevronUp, X, Pencil, Check,
+    History, ChevronDown, ChevronUp, X, Pencil, Check, MapPin,
 } from "lucide-react";
 
 interface Lead {
@@ -576,8 +576,20 @@ export default function LeadsPage() {
 
                             {!showHistory ? (
                                 <div className="grid gap-3">
+                                    <div className="grid grid-cols-4 items-center gap-3">
+                                        <span className="text-right font-medium text-muted-foreground text-sm">Address</span>
+                                        <div className="col-span-3 text-sm flex items-center gap-2">
+                                            <span>{selectedLead.address || "—"}</span>
+                                            {selectedLead.address && selectedLead.address !== "N/A" && (
+                                                <Button variant="outline" size="icon" className="h-6 w-6 rounded-md" asChild>
+                                                    <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${selectedLead.name} ${selectedLead.address}`)}`} target="_blank" rel="noreferrer" title="Open in Google Maps">
+                                                        <MapPin className="h-3 w-3 text-blue-500" />
+                                                    </a>
+                                                </Button>
+                                            )}
+                                        </div>
+                                    </div>
                                     {[
-                                        ["Address", selectedLead.address],
                                         ["City", selectedLead.city],
                                         ["Phone", selectedLead.phone],
                                     ].map(([label, val]) => (
