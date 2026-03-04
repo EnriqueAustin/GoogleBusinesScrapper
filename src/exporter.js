@@ -66,6 +66,28 @@ async function saveLeads(newLeads) {
             else if (reviewInt && reviewInt >= 50) score += 5;
             score = Math.max(0, Math.min(100, score));
 
+            // Check existing query to append, rather than overwrite
+            const existingLead = await prisma.lead.findUnique({
+                where: {
+                    name_address: {
+                        name: lead.name,
+                        address: lead.address || 'N/A'
+                    }
+                },
+                select: { query: true }
+            });
+
+            let updatedQuery = lead.query;
+            if (existingLead && existingLead.query && lead.query) {
+                const queries = existingLead.query.split(',').map(q => q.trim());
+                if (!queries.includes(lead.query.trim())) {
+                    queries.push(lead.query.trim());
+                    updatedQuery = queries.join(', ');
+                } else {
+                    updatedQuery = existingLead.query;
+                }
+            }
+
             await prisma.lead.upsert({
                 where: {
                     name_address: {
@@ -85,7 +107,7 @@ async function saveLeads(newLeads) {
                     websiteStatus: lead.websiteStatus,
                     techStack: lead.techStack,
                     seoStatus: lead.seoStatus,
-                    query: lead.query,
+                    query: updatedQuery,
                 },
                 create: {
                     name: lead.name,
