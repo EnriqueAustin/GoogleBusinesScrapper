@@ -350,6 +350,7 @@ async function scrapeGoogleMaps(query, maxResults) {
 
         // Track seen businesses to avoid processing duplicates within this job
         const seenBusinesses = new Set();
+        const seenCardNames = new Set();
         let logIndex = 0;
 
         // Click each listing and extract data
@@ -377,6 +378,19 @@ async function scrapeGoogleMaps(query, maxResults) {
                     continue;
                 }
 
+                // PRE-FILTER: Read the card's aria-label to detect duplicates BEFORE clicking
+                try {
+                    const ariaLabel = await listing.getAttribute('aria-label');
+                    if (ariaLabel) {
+                        const cardName = ariaLabel.trim();
+                        if (seenCardNames.has(cardName)) {
+                            log('info', `[${i + 1}] Skipping duplicate card: ${cardName}`);
+                            continue; // Skip without clicking — saves ~12 seconds
+                        }
+                        seenCardNames.add(cardName);
+                    }
+                } catch { /* If we can't read aria-label, proceed with click */ }
+
                 await listing.click();
 
                 const dc = config.delays.afterClick;
@@ -399,18 +413,18 @@ async function scrapeGoogleMaps(query, maxResults) {
                     }
                 }
 
-                // Close detail panel and verify it actually closed
+                // Close detail panel
                 await page.keyboard.press('Escape');
                 const de = config.delays.afterEscape;
                 await humanDelay(de.min, de.max);
 
-                // Verify panel closed — if name element is still visible, press Escape again
+                // Verify panel closed — check for detail-panel-specific element
+                // (button[data-item-id="address"] only exists in the detail panel, not the list view)
                 try {
-                    const panelStillOpen = await page.locator('.DUwDvf').isVisible({ timeout: 1500 }).catch(() => false);
+                    const panelStillOpen = await page.locator('button[data-item-id="address"]').isVisible({ timeout: 1000 }).catch(() => false);
                     if (panelStillOpen) {
-                        log('info', 'Detail panel still open, pressing Escape again...');
                         await page.keyboard.press('Escape');
-                        await humanDelay(de.min, de.max);
+                        await humanDelay(1, 2);
                     }
                 } catch { /* safe to ignore */ }
 
