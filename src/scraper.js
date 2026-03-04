@@ -217,11 +217,16 @@ async function scrapeGoogleMaps(query, maxResults) {
 
     log('info', `Starting scrape for: "${query}" (max ${max} results)`);
 
-    const browser = await chromium.launch({
+    const browserOptions = {
         headless: config.browser.headless,
         args: config.browser.args,
         slowMo: config.browser.slowMo,
-    });
+    };
+    if (config.browser.proxy) {
+        browserOptions.proxy = config.browser.proxy;
+    }
+
+    const browser = await chromium.launch(browserOptions);
 
     const context = await browser.newContext({
         viewport: config.browser.viewport,

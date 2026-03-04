@@ -30,6 +30,26 @@ const scraperWorker = new Worker('scraperQueue', async (job) => {
 
         const startTime = Date.now();
 
+        // 1.5 Fetch and Override Global Settings
+        try {
+            const dbSettings = await prisma.setting.findMany();
+            const s = {};
+            dbSettings.forEach(row => {
+                try { s[row.key] = JSON.parse(row.value); }
+                catch { s[row.key] = row.value; }
+            });
+
+            if (s.headless !== undefined) config.browser.headless = s.headless === "true" || s.headless === true;
+            if (s.proxyUrl) config.browser.proxy = { server: s.proxyUrl };
+            if (s.maxResultsPerQuery !== undefined) config.limits.maxResultsPerQuery = parseInt(s.maxResultsPerQuery, 10);
+            if (s.maxScrollAttempts !== undefined) config.limits.maxScrollAttempts = parseInt(s.maxScrollAttempts, 10);
+            if (s.enrichWebsitesDuringScrape !== undefined) config.features.enrichWebsitesDuringScrape = s.enrichWebsitesDuringScrape === "true" || s.enrichWebsitesDuringScrape === true;
+
+            log('info', `Applied Dynamic Settings from DB: ${JSON.stringify(s)}`);
+        } catch (e) {
+            log('warn', `Failed to apply dynamic settings, using default config.js. Error: ${e.message}`);
+        }
+
         // 2. Scrape
         const leads = await scrapeGoogleMaps(query);
 

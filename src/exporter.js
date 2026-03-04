@@ -30,6 +30,42 @@ async function saveLeads(newLeads) {
     // Save to Postgres (upsert based on name + address)
     for (const lead of newLeads) {
         try {
+            // Parse rating to Float
+            let ratingFloat = null;
+            if (lead.rating && lead.rating !== 'N/A' && lead.rating !== '') {
+                const parsed = parseFloat(lead.rating);
+                if (!isNaN(parsed)) ratingFloat = parsed;
+            }
+
+            // Parse reviewCount to Int
+            let reviewInt = null;
+            if (lead.reviewCount && lead.reviewCount !== 'N/A' && lead.reviewCount !== '') {
+                const numStr = String(lead.reviewCount).replace(/[^0-9]/g, '');
+                const parsed = parseInt(numStr, 10);
+                if (!isNaN(parsed)) reviewInt = parsed;
+            }
+
+            // Extract city from address
+            let city = null;
+            if (lead.address && lead.address !== 'N/A') {
+                const parts = lead.address.split(',').map(p => p.trim());
+                if (parts.length >= 2) {
+                    city = parts[parts.length - 2].replace(/\d+/g, '').trim() || null;
+                }
+            }
+
+            // Calculate lead score
+            let score = 50;
+            if (!lead.hasWebsite) score += 25; else score -= 15;
+            if (ratingFloat && ratingFloat >= 4.5) score += 15;
+            else if (ratingFloat && ratingFloat >= 4.0) score += 10;
+            else if (ratingFloat && ratingFloat >= 3.0) score += 5;
+            if (lead.phone && lead.phone !== 'N/A') score += 5;
+            if (lead.socials && lead.socials.length > 0 && lead.socials !== 'None found') score += 5;
+            if (reviewInt && reviewInt >= 100) score += 10;
+            else if (reviewInt && reviewInt >= 50) score += 5;
+            score = Math.max(0, Math.min(100, score));
+
             await prisma.lead.upsert({
                 where: {
                     name_address: {
@@ -41,8 +77,10 @@ async function saveLeads(newLeads) {
                     phone: lead.phone,
                     website: lead.website,
                     hasWebsite: lead.hasWebsite,
-                    rating: lead.rating,
-                    reviewCount: lead.reviewCount,
+                    rating: ratingFloat,
+                    reviewCount: reviewInt,
+                    city,
+                    leadScore: score,
                     socials: lead.socials,
                     websiteStatus: lead.websiteStatus,
                     techStack: lead.techStack,
@@ -53,11 +91,13 @@ async function saveLeads(newLeads) {
                     name: lead.name,
                     category: lead.category,
                     address: lead.address || 'N/A',
+                    city,
                     phone: lead.phone,
                     website: lead.website,
                     hasWebsite: lead.hasWebsite,
-                    rating: lead.rating,
-                    reviewCount: lead.reviewCount,
+                    rating: ratingFloat,
+                    reviewCount: reviewInt,
+                    leadScore: score,
                     socials: lead.socials,
                     websiteStatus: lead.websiteStatus,
                     techStack: lead.techStack,

@@ -15,21 +15,46 @@ model Lead {
   name          String
   category      String?
   address       String?
+  city          String?
   phone         String?
   website       String?
   hasWebsite    Boolean  @default(false)
-  rating        String?
-  reviewCount   String?
+  rating        Float?
+  reviewCount   Int?
   socials       String?
   websiteStatus String?
   techStack     String?
   seoStatus     String?
+  leadScore     Int      @default(0)
+  notes         String?
+  tags          String?
+  customFields  Json?
   query         String?
   scrapedAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
-  @@unique([name, address]) // Deduplication constraint
+  logs          LeadLog[]
+
+  @@unique([name, address])
   @@index([hasWebsite])
   @@index([query])
+  @@index([category])
+  @@index([rating])
+  @@index([leadScore])
+  @@index([city])
+}
+
+model LeadLog {
+  id        Int      @id @default(autoincrement())
+  leadId    Int
+  lead      Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  action    String
+  field     String?
+  oldValue  String?
+  newValue  String?
+  createdAt DateTime @default(now())
+
+  @@index([leadId])
 }
 
 model Query {
@@ -41,11 +66,16 @@ model Query {
 model Job {
   id           String    @id @default(uuid())
   query        String
-  status       String    @default("waiting") // waiting, active, completed, failed
+  status       String    @default("waiting")
   resultsCount Int       @default(0)
   durationMs   Int?
   params       String?
   createdAt    DateTime  @default(now())
   startedAt    DateTime?
   completedAt  DateTime?
+}
+
+model Setting {
+  key   String @id
+  value String
 }

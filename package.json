@@ -8,8 +8,8 @@
     "dashboard": "node server.js",
     "worker": "node src/worker.js",
     "dev:frontend": "cd frontend && npm run dev",
-    "dev:api": "node server.js",
-    "dev:worker": "node src/worker.js",
+    "dev:api": "node --watch server.js",
+    "dev:worker": "node --watch src/worker.js",
     "dev": "concurrently \"npm run dev:api\" \"npm run dev:worker\" \"npm run dev:frontend\"",
     "postinstall": "npx playwright install chromium"
   },
@@ -24,10 +24,12 @@
     "bullmq": "^5.70.1",
     "chalk": "^4.1.2",
     "cors": "^2.8.6",
+    "csv-parse": "^6.1.0",
     "csv-writer": "^1.6.0",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "ioredis": "^5.10.0",
+    "multer": "^2.1.0",
     "playwright-core": "^1.50.0",
     "playwright-extra": "^4.3.6",
     "puppeteer-extra-plugin-stealth": "^2.11.2"

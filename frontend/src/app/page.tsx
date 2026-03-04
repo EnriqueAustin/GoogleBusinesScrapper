@@ -10,6 +10,17 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Users, Globe, Briefcase, Activity } from "lucide-react";
+import {
+  Bar,
+  BarChart,
+  ResponsiveContainer,
+  XAxis,
+  YAxis,
+  Tooltip,
+  PieChart,
+  Pie,
+  Cell,
+} from "recharts";
 
 interface Stats {
   total: number;
@@ -17,6 +28,7 @@ interface Stats {
   noWebsite: number;
   categories: number;
   queries: number;
+  topCategories: { name: string; count: number }[];
 }
 
 export default function OverviewPage() {
@@ -105,6 +117,91 @@ export default function OverviewPage() {
           <CardContent>
             <div className="text-2xl font-bold">{stats.queries}</div>
             <p className="text-xs text-muted-foreground">Across {stats.categories} categories</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
+        <Card className="col-span-4">
+          <CardHeader>
+            <CardTitle>Top Categories</CardTitle>
+            <CardDescription>
+              Most frequent business categories scraped in your database.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="pl-2">
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={stats.topCategories || []} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                <XAxis
+                  dataKey="name"
+                  stroke="#888888"
+                  fontSize={12}
+                  tickLine={false}
+                  axisLine={false}
+                  tickFormatter={(value) => value.length > 15 ? value.substring(0, 15) + '...' : value}
+                />
+                <YAxis
+                  stroke="#888888"
+                  fontSize={12}
+                  tickLine={false}
+                  axisLine={false}
+                  tickFormatter={(value) => `${value}`}
+                />
+                <Tooltip
+                  cursor={{ fill: 'transparent' }}
+                  contentStyle={{ borderRadius: '8px', border: '1px solid #e2e8f0' }}
+                />
+                <Bar
+                  dataKey="count"
+                  fill="#3b82f6"
+                  radius={[4, 4, 0, 0]}
+                  barSize={40}
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
+        <Card className="col-span-3">
+          <CardHeader>
+            <CardTitle>Website Status Ratio</CardTitle>
+            <CardDescription>
+              Breakdown of raw prospects vs established leads.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={300}>
+              <PieChart>
+                <Pie
+                  data={[
+                    { name: 'Has Website', value: stats.withWebsite },
+                    { name: 'No Website', value: stats.noWebsite },
+                  ]}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={60}
+                  outerRadius={100}
+                  paddingAngle={5}
+                  dataKey="value"
+                >
+                  <Cell fill="#10b981" /> {/* Emerald for Web */}
+                  <Cell fill="#f59e0b" /> {/* Amber for No Web */}
+                </Pie>
+                <Tooltip
+                  contentStyle={{ borderRadius: '8px', border: '1px solid #e2e8f0' }}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+            <div className="flex justify-center gap-6 mt-4 text-sm">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-emerald-500"></div>
+                <span className="text-muted-foreground">Has Website</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-amber-500"></div>
+                <span className="text-muted-foreground">No Website</span>
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>

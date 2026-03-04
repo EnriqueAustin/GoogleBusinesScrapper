@@ -15,28 +15,32 @@ const PORT = config.dashboard.port;
 app.use(express.static(path.join(__dirname, 'dashboard')));
 
 /**
- * GET /api/leads — return all leads, with optional query param filtering
+ * GET /api/leads — return paginated leads with sorting and advanced filters
  */
 app.get('/api/leads', async (req, res) => {
     try {
-        const { hasWebsite, query, category, minRating, search } = req.query;
+        const {
+            hasWebsite, query, category, minRating, search,
+            page = 1, limit = 50,
+            sortBy = 'scrapedAt', sortDir = 'desc',
+            city, minReviews, maxReviews, minScore, tags
+        } = req.query;
 
         // Build Prisma where clause
         const where = {};
 
-        if (hasWebsite === 'yes') {
-            where.hasWebsite = true;
-        } else if (hasWebsite === 'no') {
-            where.hasWebsite = false;
-        }
+        if (hasWebsite === 'yes') where.hasWebsite = true;
+        else if (hasWebsite === 'no') where.hasWebsite = false;
 
-        if (query) {
-            where.query = { contains: query, mode: 'insensitive' };
-        }
+        if (query) where.query = { contains: query, mode: 'insensitive' };
+        if (category) where.category = { contains: category, mode: 'insensitive' };
+        if (city) where.city = { contains: city, mode: 'insensitive' };
 
-        if (category) {
-            where.category = { contains: category, mode: 'insensitive' };
-        }
+        if (minRating) where.rating = { ...where.rating, gte: parseFloat(minRating) };
+        if (minReviews) where.reviewCount = { ...where.reviewCount, gte: parseInt(minReviews) };
+        if (maxReviews) where.reviewCount = { ...where.reviewCount, lte: parseInt(maxReviews) };
+        if (minScore) where.leadScore = { gte: parseInt(minScore) };
+        if (tags) where.tags = { contains: tags, mode: 'insensitive' };
 
         if (search) {
             where.OR = [
@@ -47,19 +51,33 @@ app.get('/api/leads', async (req, res) => {
             ];
         }
 
-        let leads = await prisma.lead.findMany({
-            where,
-            orderBy: { scrapedAt: 'desc' }
+        // Build orderBy — validate allowed columns
+        const allowedSortCols = ['name', 'category', 'rating', 'reviewCount', 'leadScore', 'scrapedAt', 'city'];
+        const orderCol = allowedSortCols.includes(sortBy) ? sortBy : 'scrapedAt';
+        const orderDir = sortDir === 'asc' ? 'asc' : 'desc';
+
+        const pageNum = parseInt(page) || 1;
+        const pageSize = parseInt(limit) || 50;
+
+        const [leads, total] = await Promise.all([
+            prisma.lead.findMany({
+                where,
+                orderBy: { [orderCol]: orderDir },
+                skip: (pageNum - 1) * pageSize,
+                take: pageSize,
+            }),
+            prisma.lead.count({ where })
+        ]);
+
+        res.json({
+            data: leads,
+            pagination: {
+                total,
+                page: pageNum,
+                limit: pageSize,
+                totalPages: Math.ceil(total / pageSize)
+            }
         });
-
-        // Prisma doesn't natively support > filtering on strings, so we filter rating in memory
-        // (If we change schema to float later, we could push this to the DB)
-        if (minRating) {
-            const min = parseFloat(minRating);
-            leads = leads.filter(l => l.rating !== 'N/A' && l.rating !== null && parseFloat(l.rating) >= min);
-        }
-
-        res.json(leads);
     } catch (err) {
         console.error('Error fetching leads:', err);
         res.status(500).json({ error: 'Database error' });
@@ -76,10 +94,12 @@ app.get('/api/stats', async (req, res) => {
         const noWebsite = await prisma.lead.count({ where: { hasWebsite: false } });
 
         // Get unique categories and queries
-        const categoriesData = await prisma.lead.findMany({
-            select: { category: true },
-            distinct: ['category'],
-            where: { category: { not: 'N/A', not: null } }
+        const categoriesData = await prisma.lead.groupBy({
+            by: ['category'],
+            _count: { category: true },
+            where: { category: { not: null, notIn: ['N/A', ''] } },
+            orderBy: { _count: { category: 'desc' } },
+            take: 10
         });
 
         const queriesData = await prisma.lead.findMany({
@@ -88,20 +108,326 @@ app.get('/api/stats', async (req, res) => {
             where: { query: { not: null } }
         });
 
-        const categoryList = categoriesData.map(c => c.category).filter(Boolean);
+        const topCategories = categoriesData.map(c => ({
+            name: c.category,
+            count: c._count.category
+        }));
+
         const queryList = queriesData.map(q => q.query).filter(Boolean);
 
         res.json({
             total,
             withWebsite,
             noWebsite,
-            categories: categoryList.length,
+            categories: topCategories.length, // Approximate for dashboard
             queries: queryList.length,
-            categoryList,
+            topCategories,
             queryList,
         });
     } catch (err) {
         console.error('Error fetching stats:', err);
+        res.status(500).json({ error: 'Database error' });
+    }
+});
+
+/**
+ * POST /api/enrich/bulk — trigger enrichment for multiple websites
+ * This runs asynchronously in the background so it doesn't block the API response.
+ */
+app.post('/api/enrich/bulk', async (req, res) => {
+    const { websites } = req.body;
+    if (!websites || !Array.isArray(websites)) {
+        return res.status(400).json({ error: 'Missing or invalid websites array' });
+    }
+
+    // Respond immediately
+    res.json({ message: `Queued ${websites.length} websites for enrichment` });
+
+    // Process asynchronously
+    (async () => {
+        for (const website of websites) {
+            try {
+                const targetLead = await prisma.lead.findFirst({ where: { website } });
+                if (!targetLead) continue;
+
+                const enrichment = await enrichWebsite(website);
+                await prisma.lead.update({
+                    where: { id: targetLead.id },
+                    data: { ...enrichment }
+                });
+            } catch (err) {
+                console.error(`Failed to enrich ${website} in background:`, err);
+            }
+        }
+        exportAllCsv().catch(e => console.error(e));
+    })();
+});
+
+/**
+ * DELETE /api/leads/bulk — delete multiple leads by ID
+ */
+app.delete('/api/leads/bulk', async (req, res) => {
+    const { ids } = req.body;
+    if (!ids || !Array.isArray(ids)) {
+        return res.status(400).json({ error: 'Missing or invalid ids array' });
+    }
+
+    try {
+        await prisma.lead.deleteMany({
+            where: { id: { in: ids } }
+        });
+
+        exportAllCsv().catch(e => console.error(e));
+        res.json({ message: `Deleted ${ids.length} leads` });
+    } catch (err) {
+        console.error('Failed to bulk delete:', err);
+        res.status(500).json({ error: 'Failed to delete leads' });
+    }
+});
+
+// ── New Phase B Endpoints ────────────────────────────────────────────
+
+const multer = require('multer');
+const { parse } = require('csv-parse/sync');
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
+
+/**
+ * PATCH /api/leads/:id — inline edit a single lead field
+ */
+app.patch('/api/leads/:id', async (req, res) => {
+    try {
+        const leadId = parseInt(req.params.id);
+        const updates = req.body; // { field: value, ... }
+
+        const existing = await prisma.lead.findUnique({ where: { id: leadId } });
+        if (!existing) return res.status(404).json({ error: 'Lead not found' });
+
+        // Log each changed field
+        const logEntries = [];
+        for (const [field, newValue] of Object.entries(updates)) {
+            const oldValue = existing[field];
+            if (String(oldValue) !== String(newValue)) {
+                logEntries.push({
+                    leadId,
+                    action: 'edited',
+                    field,
+                    oldValue: oldValue != null ? String(oldValue) : null,
+                    newValue: newValue != null ? String(newValue) : null,
+                });
+            }
+        }
+
+        const updated = await prisma.lead.update({
+            where: { id: leadId },
+            data: updates,
+        });
+
+        if (logEntries.length > 0) {
+            await prisma.leadLog.createMany({ data: logEntries });
+        }
+
+        res.json(updated);
+    } catch (err) {
+        console.error('Error updating lead:', err);
+        res.status(500).json({ error: 'Failed to update lead' });
+    }
+});
+
+/**
+ * GET /api/leads/:id/logs — audit history for a specific lead
+ */
+app.get('/api/leads/:id/logs', async (req, res) => {
+    try {
+        const leadId = parseInt(req.params.id);
+        const logs = await prisma.leadLog.findMany({
+            where: { leadId },
+            orderBy: { createdAt: 'desc' },
+            take: 100,
+        });
+        res.json(logs);
+    } catch (err) {
+        console.error('Error fetching lead logs:', err);
+        res.status(500).json({ error: 'Database error' });
+    }
+});
+
+/**
+ * POST /api/leads/import — import leads from CSV file
+ */
+app.post('/api/leads/import', upload.single('file'), async (req, res) => {
+    try {
+        if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+
+        const csvContent = req.file.buffer.toString('utf-8');
+        const records = parse(csvContent, {
+            columns: true,
+            skip_empty_lines: true,
+            trim: true,
+        });
+
+        let imported = 0;
+        let duplicatesSkipped = 0;
+        let errors = 0;
+
+        for (const row of records) {
+            try {
+                const name = row.Name || row.name || row.business_name;
+                const address = row.Address || row.address || 'N/A';
+                if (!name) { errors++; continue; }
+
+                // Extract city
+                let city = null;
+                const parts = address.split(',').map(p => p.trim());
+                if (parts.length >= 2) {
+                    city = parts[parts.length - 2].replace(/\d+/g, '').trim() || null;
+                }
+
+                const rating = parseFloat(row.Rating || row.rating) || null;
+                const reviewCount = parseInt(String(row.Reviews || row.reviewCount || row.review_count || '').replace(/[^0-9]/g, '')) || null;
+                const hasWebsite = !!(row.Website || row.website) && (row.Website || row.website) !== 'None';
+
+                let score = 50;
+                if (!hasWebsite) score += 25; else score -= 15;
+                if (rating && rating >= 4.0) score += 10;
+                if (reviewCount && reviewCount >= 50) score += 5;
+                score = Math.max(0, Math.min(100, score));
+
+                await prisma.lead.upsert({
+                    where: { name_address: { name, address } },
+                    update: {}, // Don't overwrite existing data
+                    create: {
+                        name,
+                        category: row.Category || row.category || null,
+                        address,
+                        city,
+                        phone: row.Phone || row.phone || null,
+                        website: row.Website || row.website || null,
+                        hasWebsite,
+                        rating,
+                        reviewCount,
+                        leadScore: score,
+                        socials: row.Socials || row.socials || null,
+                        query: row.Query || row.query || 'imported',
+                    },
+                });
+
+                imported++;
+            } catch (upsertErr) {
+                if (upsertErr.code === 'P2002') {
+                    duplicatesSkipped++;
+                } else {
+                    errors++;
+                    console.error('Import row error:', upsertErr.message);
+                }
+            }
+        }
+
+        res.json({ imported, duplicatesSkipped, errors, totalRows: records.length });
+    } catch (err) {
+        console.error('CSV import failed:', err);
+        res.status(500).json({ error: 'Failed to import CSV' });
+    }
+});
+
+/**
+ * POST /api/leads/deduplicate — find and merge duplicate leads
+ */
+app.post('/api/leads/deduplicate', async (req, res) => {
+    try {
+        // Find exact duplicates (same name + same city, different IDs)
+        const duplicates = await prisma.$queryRawUnsafe(`
+            SELECT name, city, COUNT(*)::int as count, array_agg(id ORDER BY id) as ids
+            FROM "Lead"
+            WHERE city IS NOT NULL
+            GROUP BY name, city
+            HAVING COUNT(*) > 1
+            LIMIT 100
+        `);
+
+        let mergedCount = 0;
+        for (const group of duplicates) {
+            const keepId = group.ids[0]; // Keep the first (oldest) record
+            const deleteIds = group.ids.slice(1);
+
+            await prisma.lead.deleteMany({
+                where: { id: { in: deleteIds } }
+            });
+
+            await prisma.leadLog.create({
+                data: {
+                    leadId: keepId,
+                    action: 'deduplicated',
+                    field: 'merged',
+                    newValue: `Merged ${deleteIds.length} duplicate(s)`,
+                }
+            });
+
+            mergedCount += deleteIds.length;
+        }
+
+        res.json({
+            duplicateGroups: duplicates.length,
+            mergedCount,
+            message: `Found ${duplicates.length} duplicate groups, merged ${mergedCount} records.`
+        });
+    } catch (err) {
+        console.error('Deduplication failed:', err);
+        res.status(500).json({ error: 'Failed to deduplicate' });
+    }
+});
+
+/**
+ * POST /api/leads/score — recalculate lead scores for all or selected leads
+ */
+app.post('/api/leads/score', async (req, res) => {
+    try {
+        const { ids } = req.body; // Optional: array of specific lead IDs
+        const where = ids && Array.isArray(ids) ? { id: { in: ids } } : {};
+
+        const leads = await prisma.lead.findMany({ where });
+        let updated = 0;
+
+        for (const lead of leads) {
+            let score = 50;
+            if (!lead.hasWebsite) score += 25; else score -= 15;
+            if (lead.rating && lead.rating >= 4.5) score += 15;
+            else if (lead.rating && lead.rating >= 4.0) score += 10;
+            else if (lead.rating && lead.rating >= 3.0) score += 5;
+            if (lead.phone && lead.phone !== 'N/A') score += 5;
+            if (lead.socials && lead.socials.length > 0 && lead.socials !== 'None found') score += 5;
+            if (lead.reviewCount && lead.reviewCount >= 100) score += 10;
+            else if (lead.reviewCount && lead.reviewCount >= 50) score += 5;
+            score = Math.max(0, Math.min(100, score));
+
+            if (score !== lead.leadScore) {
+                await prisma.lead.update({
+                    where: { id: lead.id },
+                    data: { leadScore: score }
+                });
+                updated++;
+            }
+        }
+
+        res.json({ message: `Recalculated scores for ${leads.length} leads, ${updated} changed.` });
+    } catch (err) {
+        console.error('Scoring failed:', err);
+        res.status(500).json({ error: 'Failed to recalculate scores' });
+    }
+});
+
+/**
+ * GET /api/leads/categories — distinct category list for filter dropdowns
+ */
+app.get('/api/leads/categories', async (req, res) => {
+    try {
+        const categories = await prisma.lead.findMany({
+            select: { category: true },
+            distinct: ['category'],
+            where: { category: { not: null, notIn: ['N/A', ''] } },
+            orderBy: { category: 'asc' },
+        });
+        res.json(categories.map(c => c.category));
+    } catch (err) {
         res.status(500).json({ error: 'Database error' });
     }
 });
@@ -193,6 +519,85 @@ app.post('/api/jobs', async (req, res) => {
 });
 
 /**
+ * DELETE /api/jobs/clear — remove completed/failed jobs from history
+ */
+app.delete('/api/jobs/clear', async (req, res) => {
+    try {
+        await prisma.job.deleteMany({
+            where: {
+                status: {
+                    in: ['completed', 'failed']
+                }
+            }
+        });
+        res.json({ message: 'History cleared' });
+    } catch (err) {
+        console.error('Error clearing jobs:', err);
+        res.status(500).json({ error: 'Failed to clear jobs' });
+    }
+});
+
+/**
+ * POST /api/jobs/:id/cancel — cancel a waiting/active job
+ */
+app.post('/api/jobs/:id/cancel', async (req, res) => {
+    try {
+        const jobId = req.params.id;
+        const jobRecord = await prisma.job.findUnique({ where: { id: jobId } });
+
+        if (!jobRecord) return res.status(404).json({ error: 'Job not found' });
+        if (jobRecord.status === 'completed') return res.status(400).json({ error: 'Job already completed' });
+
+        const { scraperQueue } = require('./src/queue/scraperQueue');
+        const bullJob = await scraperQueue.getJob(jobId);
+
+        if (bullJob) {
+            await bullJob.remove();
+        }
+
+        await prisma.job.update({
+            where: { id: jobId },
+            data: { status: 'failed', completedAt: new Date() } // Mark cancelled as failed
+        });
+
+        res.json({ message: 'Job cancelled' });
+    } catch (err) {
+        console.error('Error cancelling job:', err);
+        res.status(500).json({ error: 'Failed to cancel job' });
+    }
+});
+
+/**
+ * POST /api/jobs/:id/retry — retry a failed/cancelled job
+ */
+app.post('/api/jobs/:id/retry', async (req, res) => {
+    try {
+        const jobId = req.params.id;
+        const jobRecord = await prisma.job.findUnique({ where: { id: jobId } });
+
+        if (!jobRecord) return res.status(404).json({ error: 'Job not found' });
+
+        const { addScrapeJob } = require('./src/queue/scraperQueue');
+        const params = jobRecord.params ? JSON.parse(jobRecord.params) : {};
+        const bullJob = await addScrapeJob(jobRecord.query, params);
+
+        await prisma.job.create({
+            data: {
+                id: String(bullJob.id),
+                query: jobRecord.query,
+                status: 'waiting',
+                params: jobRecord.params
+            }
+        });
+
+        res.json({ message: 'Job retried', jobId: bullJob.id });
+    } catch (err) {
+        console.error('Error retrying job:', err);
+        res.status(500).json({ error: 'Failed to retry job' });
+    }
+});
+
+/**
  * GET /api/jobs — list all scraping jobs and their statuses
  */
 app.get('/api/jobs', async (req, res) => {
@@ -221,6 +626,52 @@ app.get('/api/jobs/:id', async (req, res) => {
         res.json(job);
     } catch (err) {
         console.error('Error fetching job:', err);
+        res.status(500).json({ error: 'Database error' });
+    }
+});
+
+/**
+ * GET /api/settings — get global settings from DB
+ */
+app.get('/api/settings', async (req, res) => {
+    try {
+        const settings = await prisma.setting.findMany();
+        const settingsObj = {};
+        for (const s of settings) {
+            try {
+                settingsObj[s.key] = JSON.parse(s.value);
+            } catch {
+                settingsObj[s.key] = s.value;
+            }
+        }
+        res.json(settingsObj);
+    } catch (err) {
+        console.error('Error fetching settings:', err);
+        res.status(500).json({ error: 'Database error' });
+    }
+});
+
+/**
+ * POST /api/settings — update global settings in DB
+ */
+app.post('/api/settings', async (req, res) => {
+    try {
+        const updates = req.body;
+
+        // Convert object to key-value upsert queries
+        const queries = Object.keys(updates).map(key => {
+            const value = typeof updates[key] === 'object' ? JSON.stringify(updates[key]) : String(updates[key]);
+            return prisma.setting.upsert({
+                where: { key },
+                update: { value },
+                create: { key, value }
+            });
+        });
+
+        await prisma.$transaction(queries);
+        res.json({ message: 'Settings updated' });
+    } catch (err) {
+        console.error('Error updating settings:', err);
         res.status(500).json({ error: 'Database error' });
     }
 });

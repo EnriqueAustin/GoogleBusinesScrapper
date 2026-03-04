@@ -13,7 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Play, RotateCw } from "lucide-react";
+import { Play, RotateCw, Trash2, XCircle } from "lucide-react";
 
 interface Job {
     id: string;
@@ -64,6 +64,37 @@ export default function JobsPage() {
             alert("Failed to start job. Is the API running?");
         } finally {
             setSubmitting(false);
+        }
+    };
+
+    const handleCancel = async (id: string) => {
+        try {
+            await axios.post(`http://localhost:3001/api/jobs/${id}/cancel`);
+            fetchJobs();
+        } catch (err) {
+            console.error(err);
+            alert("Failed to cancel job");
+        }
+    };
+
+    const handleRetry = async (id: string) => {
+        try {
+            await axios.post(`http://localhost:3001/api/jobs/${id}/retry`);
+            fetchJobs();
+        } catch (err) {
+            console.error(err);
+            alert("Failed to retry job");
+        }
+    };
+
+    const handleClearHistory = async () => {
+        if (!confirm("Delete all completed and failed jobs?")) return;
+        try {
+            await axios.delete("http://localhost:3001/api/jobs/clear");
+            fetchJobs();
+        } catch (err) {
+            console.error(err);
+            alert("Failed to clear history");
         }
     };
 
@@ -118,7 +149,14 @@ export default function JobsPage() {
             </Card>
 
             <div className="space-y-4">
-                <h2 className="text-xl font-semibold tracking-tight">Recent Jobs</h2>
+                <div className="flex items-center justify-between">
+                    <h2 className="text-xl font-semibold tracking-tight">Recent Jobs</h2>
+                    {jobs.some(j => j.status === 'completed' || j.status === 'failed') && (
+                        <Button variant="outline" size="sm" onClick={handleClearHistory} className="text-muted-foreground hover:text-foreground">
+                            <Trash2 className="w-4 h-4 mr-2" /> Clear History
+                        </Button>
+                    )}
+                </div>
 
                 {loading && jobs.length === 0 ? (
                     <div className="text-center py-10 text-muted-foreground">Loading queue...</div>
@@ -152,6 +190,19 @@ export default function JobsPage() {
                                                 {job.durationMs ? `${(job.durationMs / 1000).toFixed(1)}s` : "---"}
                                             </span>
                                         </div>
+                                    </div>
+
+                                    <div className="flex sm:flex-col gap-2 mt-4 sm:mt-0 justify-end w-full sm:w-auto border-t sm:border-t-0 pt-4 sm:pt-0">
+                                        {(job.status === "waiting" || job.status === "active") && (
+                                            <Button variant="ghost" size="sm" onClick={() => handleCancel(job.id)} className="text-destructive hover:bg-destructive/10 w-full sm:w-auto">
+                                                <XCircle className="w-4 h-4 mr-2" /> Cancel
+                                            </Button>
+                                        )}
+                                        {(job.status === "failed" || job.status === "completed") && (
+                                            <Button variant="ghost" size="sm" onClick={() => handleRetry(job.id)} className="w-full sm:w-auto">
+                                                <RotateCw className="w-4 h-4 mr-2" /> Retry
+                                            </Button>
+                                        )}
                                     </div>
                                 </div>
                                 {job.status === "active" && (
