@@ -376,7 +376,7 @@ export default function LeadsPage() {
                 <form onSubmit={e => { e.preventDefault(); setPage(1); fetchLeads(); }} className="flex gap-2 flex-1">
                     <div className="relative flex-1 max-w-md">
                         <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                        <Input type="search" placeholder="Search name, phone, category..." className="pl-8"
+                        <Input type="search" placeholder="Search name, phone, city, query..." className="pl-8"
                             value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
                     </div>
                     <Button type="submit" variant="secondary" size="sm">Search</Button>

@@ -47,7 +47,9 @@ app.get('/api/leads', async (req, res) => {
                 { name: { contains: search, mode: 'insensitive' } },
                 { address: { contains: search, mode: 'insensitive' } },
                 { category: { contains: search, mode: 'insensitive' } },
-                { phone: { contains: search, mode: 'insensitive' } }
+                { phone: { contains: search, mode: 'insensitive' } },
+                { city: { contains: search, mode: 'insensitive' } },
+                { query: { contains: search, mode: 'insensitive' } }
             ];
         }
 
@@ -519,6 +521,45 @@ app.post('/api/jobs', async (req, res) => {
 });
 
 /**
+ * POST /api/jobs/batch — submit multiple queries at once
+ */
+app.post('/api/jobs/batch', async (req, res) => {
+    const { queries, params } = req.body;
+
+    if (!queries || !Array.isArray(queries) || queries.length === 0) {
+        return res.status(400).json({ error: 'Missing or invalid queries array' });
+    }
+
+    try {
+        const { addScrapeJob } = require('./src/queue/scraperQueue');
+        const jobs = [];
+
+        for (const query of queries) {
+            const trimmedQuery = query.trim();
+            if (!trimmedQuery) continue;
+
+            const job = await addScrapeJob(trimmedQuery, params);
+
+            // Ensure a DB record exists initially
+            await prisma.job.create({
+                data: {
+                    id: String(job.id),
+                    query: trimmedQuery,
+                    status: 'waiting',
+                    params: params ? JSON.stringify(params) : null
+                }
+            });
+            jobs.push(job.id);
+        }
+
+        res.json({ message: `Added ${jobs.length} jobs to queue`, jobIds: jobs });
+    } catch (err) {
+        console.error('Error adding batch jobs to queue:', err);
+        res.status(500).json({ error: 'Failed to add batch jobs' });
+    }
+});
+
+/**
  * DELETE /api/jobs/clear — remove completed/failed jobs from history
  */
 app.delete('/api/jobs/clear', async (req, res) => {
@@ -564,6 +605,36 @@ app.post('/api/jobs/:id/cancel', async (req, res) => {
     } catch (err) {
         console.error('Error cancelling job:', err);
         res.status(500).json({ error: 'Failed to cancel job' });
+    }
+});
+
+/**
+ * DELETE /api/jobs/:id — cancel and completely delete a job
+ */
+app.delete('/api/jobs/:id', async (req, res) => {
+    try {
+        const jobId = req.params.id;
+        const jobRecord = await prisma.job.findUnique({ where: { id: jobId } });
+
+        if (!jobRecord) return res.status(404).json({ error: 'Job not found' });
+
+        const { scraperQueue } = require('./src/queue/scraperQueue');
+        const bullJob = await scraperQueue.getJob(jobId);
+
+        // Remove from bull queue if it exists
+        if (bullJob) {
+            await bullJob.remove();
+        }
+
+        // Delete from postgres
+        await prisma.job.delete({
+            where: { id: jobId }
+        });
+
+        res.json({ message: 'Job deleted' });
+    } catch (err) {
+        console.error('Error deleting job:', err);
+        res.status(500).json({ error: 'Failed to delete job' });
     }
 });
 

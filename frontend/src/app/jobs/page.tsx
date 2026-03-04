@@ -56,12 +56,13 @@ export default function JobsPage() {
 
         setSubmitting(true);
         try {
-            await axios.post("http://localhost:3001/api/jobs", { query: newQuery });
+            const queries = newQuery.split('\n').filter(q => q.trim().length > 0);
+            await axios.post("http://localhost:3001/api/jobs/batch", { queries });
             setNewQuery("");
             await fetchJobs();
         } catch (err) {
-            console.error("Failed to start job", err);
-            alert("Failed to start job. Is the API running?");
+            console.error("Failed to start jobs", err);
+            alert("Failed to start jobs. Is the API running?");
         } finally {
             setSubmitting(false);
         }
@@ -84,6 +85,17 @@ export default function JobsPage() {
         } catch (err) {
             console.error(err);
             alert("Failed to retry job");
+        }
+    };
+
+    const handleDelete = async (id: string) => {
+        if (!confirm("Are you sure you want to permanently delete this job?")) return;
+        try {
+            await axios.delete(`http://localhost:3001/api/jobs/${id}`);
+            fetchJobs();
+        } catch (err) {
+            console.error(err);
+            alert("Failed to delete job");
         }
     };
 
@@ -128,22 +140,24 @@ export default function JobsPage() {
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <form onSubmit={handleStartJob} className="flex gap-3">
-                        <Input
-                            placeholder="Search query..."
+                    <form onSubmit={handleStartJob} className="flex flex-col gap-3">
+                        <textarea
+                            placeholder="Enter search queries (one per line)...&#10;e.g. roofers in Chicago&#10;plumbers in New York"
                             value={newQuery}
                             onChange={(e) => setNewQuery(e.target.value)}
-                            className="max-w-md"
+                            className="min-h-[100px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
                             disabled={submitting}
                         />
-                        <Button type="submit" disabled={submitting || !newQuery.trim()}>
-                            {submitting ? (
-                                <RotateCw className="mr-2 h-4 w-4 animate-spin" />
-                            ) : (
-                                <Play className="mr-2 h-4 w-4" />
-                            )}
-                            Dispatch Job
-                        </Button>
+                        <div className="flex justify-end">
+                            <Button type="submit" disabled={submitting || !newQuery.trim()}>
+                                {submitting ? (
+                                    <RotateCw className="mr-2 h-4 w-4 animate-spin" />
+                                ) : (
+                                    <Play className="mr-2 h-4 w-4" />
+                                )}
+                                Dispatch Job{newQuery.includes('\n') ? 's' : ''}
+                            </Button>
+                        </div>
                     </form>
                 </CardContent>
             </Card>
@@ -194,7 +208,7 @@ export default function JobsPage() {
 
                                     <div className="flex sm:flex-col gap-2 mt-4 sm:mt-0 justify-end w-full sm:w-auto border-t sm:border-t-0 pt-4 sm:pt-0">
                                         {(job.status === "waiting" || job.status === "active") && (
-                                            <Button variant="ghost" size="sm" onClick={() => handleCancel(job.id)} className="text-destructive hover:bg-destructive/10 w-full sm:w-auto">
+                                            <Button variant="ghost" size="sm" onClick={() => handleCancel(job.id)} className="text-amber-600 hover:text-amber-700 hover:bg-amber-600/10 w-full sm:w-auto">
                                                 <XCircle className="w-4 h-4 mr-2" /> Cancel
                                             </Button>
                                         )}
@@ -203,6 +217,9 @@ export default function JobsPage() {
                                                 <RotateCw className="w-4 h-4 mr-2" /> Retry
                                             </Button>
                                         )}
+                                        <Button variant="ghost" size="sm" onClick={() => handleDelete(job.id)} className="text-destructive hover:bg-destructive/10 w-full sm:w-auto">
+                                            <Trash2 className="w-4 h-4 mr-2" /> Delete
+                                        </Button>
                                     </div>
                                 </div>
                                 {job.status === "active" && (
