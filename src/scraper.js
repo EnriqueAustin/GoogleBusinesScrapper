@@ -187,7 +187,13 @@ async function extractListingData(page, query) {
         }
     } catch { /* ignore */ }
 
-    const hasWebsite = !!(website && !website.includes('facebook.com') && !website.includes('instagram.com'));
+    // Exclude social media profiles from counting as a real website
+    const socialDomains = [
+        'facebook.com', 'instagram.com', 'linkedin.com',
+        'twitter.com', 'x.com', 'tiktok.com',
+        'youtube.com', 'pinterest.com'
+    ];
+    const hasWebsite = !!(website && !socialDomains.some(domain => website.includes(domain)));
 
     return {
         name,
@@ -205,6 +211,7 @@ async function extractListingData(page, query) {
         techStack: '',
         seoStatus: '',
         websiteStatus: '',
+        emails: '',
     };
 }
 
@@ -346,7 +353,11 @@ async function scrapeGoogleMaps(query, maxResults) {
         let logIndex = 0;
 
         // Click each listing and extract data
-        for (let i = 0; i < Math.min(totalFound, max); i++) {
+        // Loop through ALL cards, but stop once we have `max` unique results
+        for (let i = 0; i < totalFound; i++) {
+            // Stop if we've collected enough unique businesses
+            if (results.length >= max) break;
+
             try {
                 // Check CAPTCHA periodically
                 if (i > 0 && i % 10 === 0) {
@@ -384,14 +395,24 @@ async function scrapeGoogleMaps(query, maxResults) {
                         results.push(data);
                         logIndex++;
                         const status = data.hasWebsite ? chalk.green('HAS WEBSITE') : chalk.red('NO WEBSITE');
-                        log('lead', `[${logIndex}/${Math.min(totalFound, max)}] ${data.name} — ${status}`);
+                        log('lead', `[${logIndex}/${max}] ${data.name} — ${status}`);
                     }
                 }
 
-                // Close detail panel
+                // Close detail panel and verify it actually closed
                 await page.keyboard.press('Escape');
                 const de = config.delays.afterEscape;
                 await humanDelay(de.min, de.max);
+
+                // Verify panel closed — if name element is still visible, press Escape again
+                try {
+                    const panelStillOpen = await page.locator('.DUwDvf').isVisible({ timeout: 1500 }).catch(() => false);
+                    if (panelStillOpen) {
+                        log('info', 'Detail panel still open, pressing Escape again...');
+                        await page.keyboard.press('Escape');
+                        await humanDelay(de.min, de.max);
+                    }
+                } catch { /* safe to ignore */ }
 
             } catch (err) {
                 log('warn', `Error on listing ${i + 1}: ${err.message}`);

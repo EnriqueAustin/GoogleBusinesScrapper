@@ -22,6 +22,7 @@ model Lead {
   rating        Float?
   reviewCount   Int?
   socials       String?
+  emails        String?
   websiteStatus String?
   techStack     String?
   seoStatus     String?

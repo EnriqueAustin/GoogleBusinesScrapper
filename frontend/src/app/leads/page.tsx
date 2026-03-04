@@ -37,6 +37,7 @@ interface Lead {
     techStack: string | null;
     seoStatus: string | null;
     socials: string | null;
+    emails: string | null;
     leadScore: number;
     notes: string | null;
     tags: string | null;
@@ -284,12 +285,12 @@ export default function LeadsPage() {
 
     const handleExportCsv = () => {
         if (leads.length === 0) return;
-        const headers = ['Name', 'Category', 'City', 'Address', 'Phone', 'Website', 'Has Website', 'Rating', 'Reviews', 'Lead Score', 'Notes', 'Tags', 'Website Status', 'Tech Stack', 'SEO Status', 'Social Links', 'Query', 'Scraped At'];
+        const headers = ['Name', 'Category', 'City', 'Address', 'Phone', 'Website', 'Has Website', 'Rating', 'Reviews', 'Lead Score', 'Notes', 'Tags', 'Website Status', 'Tech Stack', 'SEO Status', 'Emails', 'Social Links', 'Query', 'Scraped At'];
         const rows = leads.map(l => [
             l.name, l.category, l.city, l.address, l.phone, l.website,
             l.hasWebsite ? 'Yes' : 'No', l.rating, l.reviewCount, l.leadScore,
             l.notes || '', l.tags || '',
-            l.websiteStatus || '', l.techStack || '', l.seoStatus || '', l.socials || '',
+            l.websiteStatus || '', l.techStack || '', l.seoStatus || '', l.emails || '', l.socials || '',
             l.query, l.scrapedAt
         ]);
         const csvContent = [headers, ...rows]
@@ -633,6 +634,7 @@ export default function LeadsPage() {
                                         {[
                                             ["Tech Stack", selectedLead.techStack],
                                             ["SEO Status", selectedLead.seoStatus],
+                                            ["Emails", selectedLead.emails],
                                             ["Socials", selectedLead.socials],
                                         ].map(([label, val]) => (
                                             <div key={label as string} className="grid grid-cols-4 items-start gap-3">

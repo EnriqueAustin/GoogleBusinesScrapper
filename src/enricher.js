@@ -1,10 +1,115 @@
-const { chromium } = require('playwright-extra');
 const { log } = require('./utils');
 const config = require('./config');
 
+// Social media domains to look for in href attributes
+const SOCIAL_DOMAINS = [
+    { domain: 'facebook.com', name: 'Facebook' },
+    { domain: 'instagram.com', name: 'Instagram' },
+    { domain: 'linkedin.com', name: 'LinkedIn' },
+    { domain: 'twitter.com', name: 'Twitter' },
+    { domain: 'x.com', name: 'X' },
+    { domain: 'youtube.com', name: 'YouTube' },
+    { domain: 'tiktok.com', name: 'TikTok' },
+    { domain: 'pinterest.com', name: 'Pinterest' },
+];
+
+// Email patterns to exclude (false positives)
+const EMAIL_BLACKLIST_PATTERNS = [
+    /^noreply@/i,
+    /^no-reply@/i,
+    /^info@example\./i,
+    /^test@/i,
+    /^admin@example\./i,
+    /^email@example\./i,
+    /^name@example\./i,
+    /^user@example\./i,
+    /@sentry\./i,
+    /@wixpress\./i,
+    /@example\.com$/i,
+    /@example\.org$/i,
+];
+
+// File extension patterns that look like emails but aren't
+const FALSE_EMAIL_EXTENSIONS = /\.(png|jpg|jpeg|gif|svg|webp|css|js|map|woff|woff2|ttf|eot)$/i;
+
 /**
- * Super lightweight fetch-based URL checker.
- * Doesn't render JavaScript, just grabs the HTML to look for meta tags and tech stack fingerprints.
+ * Extract email addresses from HTML content
+ */
+function extractEmails(html) {
+    // Match common email patterns in the HTML
+    const emailRegex = /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g;
+    const rawMatches = html.match(emailRegex) || [];
+
+    // Deduplicate and filter out junk
+    const seen = new Set();
+    const emails = [];
+
+    for (const email of rawMatches) {
+        const lower = email.toLowerCase();
+
+        // Skip if already seen
+        if (seen.has(lower)) continue;
+        seen.add(lower);
+
+        // Skip file extensions that look like emails
+        if (FALSE_EMAIL_EXTENSIONS.test(lower)) continue;
+
+        // Skip blacklisted patterns
+        if (EMAIL_BLACKLIST_PATTERNS.some(pattern => pattern.test(lower))) continue;
+
+        // Skip very long emails (likely encoded data)
+        if (lower.length > 60) continue;
+
+        emails.push(lower);
+    }
+
+    return emails;
+}
+
+/**
+ * Extract social media links from HTML content
+ */
+function extractSocialLinks(html) {
+    // Match all href values in anchor tags
+    const hrefRegex = /href\s*=\s*["']([^"']+)["']/gi;
+    const socialLinks = [];
+    const seen = new Set();
+    let match;
+
+    while ((match = hrefRegex.exec(html)) !== null) {
+        const url = match[1];
+
+        for (const social of SOCIAL_DOMAINS) {
+            if (url.includes(social.domain)) {
+                // Normalize: remove trailing slashes and query params for dedup
+                const normalized = url.split('?')[0].replace(/\/+$/, '').toLowerCase();
+
+                // Skip generic/homepage links (e.g. just "https://facebook.com")
+                const pathAfterDomain = normalized.split(social.domain)[1] || '';
+                if (pathAfterDomain.length <= 1) continue; // just "/" or empty
+
+                // Skip share/sharer/intent links
+                if (normalized.includes('/sharer') || normalized.includes('/share')
+                    || normalized.includes('/intent/') || normalized.includes('/dialog/')) continue;
+
+                if (!seen.has(normalized)) {
+                    seen.add(normalized);
+                    socialLinks.push(url.split('?')[0]); // Keep original casing but strip query
+                }
+                break;
+            }
+        }
+    }
+
+    return socialLinks;
+}
+
+/**
+ * Enrich a website URL — fetches the HTML and extracts:
+ * - Tech stack fingerprints
+ * - Basic SEO analysis
+ * - Email addresses
+ * - Social media links
  */
 async function enrichWebsite(url) {
     if (!url || url === 'None' || url === 'N/A') {
@@ -12,6 +117,8 @@ async function enrichWebsite(url) {
             websiteStatus: 'No URL',
             techStack: 'N/A',
             seoStatus: 'N/A',
+            emails: '',
+            socials: '',
         };
     }
 
@@ -39,6 +146,8 @@ async function enrichWebsite(url) {
                 websiteStatus: `Error HTTP ${response.status}`,
                 techStack: 'N/A',
                 seoStatus: 'N/A',
+                emails: '',
+                socials: '',
             };
         }
 
@@ -97,10 +206,26 @@ async function enrichWebsite(url) {
 
         const seoStatus = seoIssues.length > 0 ? seoIssues.join(', ') : 'Good';
 
+        // 3. Extract Emails
+        const foundEmails = extractEmails(html);
+        const emails = foundEmails.join(', ');
+        if (foundEmails.length > 0) {
+            log('info', `  📧 Found ${foundEmails.length} email(s): ${emails}`);
+        }
+
+        // 4. Extract Social Media Links
+        const foundSocials = extractSocialLinks(html);
+        const socials = foundSocials.join(', ');
+        if (foundSocials.length > 0) {
+            log('info', `  🔗 Found ${foundSocials.length} social link(s)`);
+        }
+
         return {
             websiteStatus: 'Active',
             techStack,
             seoStatus,
+            emails,
+            socials,
         };
 
     } catch (err) {
@@ -116,6 +241,8 @@ async function enrichWebsite(url) {
             websiteStatus: status,
             techStack: 'N/A',
             seoStatus: 'N/A',
+            emails: '',
+            socials: '',
         };
     }
 }
