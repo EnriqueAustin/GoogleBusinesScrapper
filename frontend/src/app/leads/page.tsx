@@ -511,6 +511,9 @@ export default function LeadsPage() {
                                                 Site <ExternalLink className="h-2.5 w-2.5" />
                                             </a>
                                         )}
+                                        {lead.emails && (
+                                            <span className="text-emerald-500 truncate block max-w-[160px]" title={lead.emails}>{lead.emails.split(',')[0].trim()}</span>
+                                        )}
                                     </TableCell>
                                     <TableCell>
                                         {lead.rating ? (
