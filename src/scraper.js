@@ -350,7 +350,6 @@ async function scrapeGoogleMaps(query, maxResults) {
 
         // Track seen businesses to avoid processing duplicates within this job
         const seenBusinesses = new Set();
-        const seenCardNames = new Set();
         let logIndex = 0;
 
         // Click each listing and extract data
@@ -378,18 +377,10 @@ async function scrapeGoogleMaps(query, maxResults) {
                     continue;
                 }
 
-                // PRE-FILTER: Read the card's aria-label to detect duplicates BEFORE clicking
-                try {
-                    const ariaLabel = await listing.getAttribute('aria-label');
-                    if (ariaLabel) {
-                        const cardName = ariaLabel.trim();
-                        if (seenCardNames.has(cardName)) {
-                            log('info', `[${i + 1}] Skipping duplicate card: ${cardName}`);
-                            continue; // Skip without clicking — saves ~12 seconds
-                        }
-                        seenCardNames.add(cardName);
-                    }
-                } catch { /* If we can't read aria-label, proceed with click */ }
+                // NOTE: Pre-filtering by card name removed — it causes data loss
+                // when the detail panel doesn't close properly (card marked as "seen"
+                // but panel never opened, so the business is permanently lost).
+                // The post-click dedup below handles genuine duplicates safely.
 
                 await listing.click();
 
@@ -413,20 +404,32 @@ async function scrapeGoogleMaps(query, maxResults) {
                     }
                 }
 
-                // Close detail panel
+                // Close detail panel — MUST verify it actually closed before moving on
+                // If panel stays open, clicking next card fails silently and we lose a business
                 await page.keyboard.press('Escape');
-                const de = config.delays.afterEscape;
-                await humanDelay(de.min, de.max);
 
-                // Verify panel closed — check for detail-panel-specific element
-                // (button[data-item-id="address"] only exists in the detail panel, not the list view)
+                // Wait for address button (detail-panel-only element) to disappear
                 try {
-                    const panelStillOpen = await page.locator('button[data-item-id="address"]').isVisible({ timeout: 1000 }).catch(() => false);
-                    if (panelStillOpen) {
-                        await page.keyboard.press('Escape');
-                        await humanDelay(1, 2);
+                    await page.locator('button[data-item-id="address"]').waitFor({ state: 'hidden', timeout: 4000 });
+                } catch {
+                    // Panel didn't close — retry Escape
+                    await page.keyboard.press('Escape');
+                    try {
+                        await page.locator('button[data-item-id="address"]').waitFor({ state: 'hidden', timeout: 3000 });
+                    } catch {
+                        // Last resort: try clicking the back arrow button
+                        try {
+                            const backBtn = page.locator('button[aria-label="Back"]').first();
+                            if (await backBtn.count() > 0) {
+                                await backBtn.click();
+                                await humanDelay(1, 2);
+                            }
+                        } catch { /* continue anyway */ }
                     }
-                } catch { /* safe to ignore */ }
+                }
+
+                // Small human delay before next action
+                await humanDelay(0.5, 1.5);
 
             } catch (err) {
                 log('warn', `Error on listing ${i + 1}: ${err.message}`);
