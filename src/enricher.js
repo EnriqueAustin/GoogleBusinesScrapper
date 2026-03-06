@@ -23,10 +23,20 @@ const EMAIL_BLACKLIST_PATTERNS = [
     /^email@example\./i,
     /^name@example\./i,
     /^user@example\./i,
-    /@sentry\./i,
+    /^example@/i,
+    /@sentry/i,
     /@wixpress\./i,
+    /@sentry-next\./i,
     /@example\.com$/i,
     /@example\.org$/i,
+    /@mysite\.com$/i,
+    /@domain\.com$/i,
+    /@yoursite\.com$/i,
+    /@yourwebsite\.com$/i,
+    /@website\.com$/i,
+    /@email\.com$/i,
+    /^xxx@/i,
+    /@xxx\./i,
 ];
 
 // File extension patterns that look like emails but aren't
@@ -36,16 +46,29 @@ const FALSE_EMAIL_EXTENSIONS = /\.(png|jpg|jpeg|gif|svg|webp|css|js|map|woff|wof
  * Extract email addresses from HTML content
  */
 function extractEmails(html) {
+    // URL-decode common encoded characters before matching
+    const decodedHtml = html
+        .replace(/%40/g, '@')
+        .replace(/%20/g, ' ')
+        .replace(/%2E/gi, '.');
+
     // Match common email patterns in the HTML
     const emailRegex = /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g;
-    const rawMatches = html.match(emailRegex) || [];
+    const rawMatches = decodedHtml.match(emailRegex) || [];
 
     // Deduplicate and filter out junk
     const seen = new Set();
     const emails = [];
+    const MAX_EMAILS = 10; // Cap to avoid noise from chain/franchise sites
 
     for (const email of rawMatches) {
-        const lower = email.toLowerCase();
+        if (emails.length >= MAX_EMAILS) break;
+
+        // Trim whitespace and lowercase
+        const lower = email.trim().toLowerCase();
+
+        // Skip empty after trim
+        if (!lower || lower.length < 5) continue;
 
         // Skip if already seen
         if (seen.has(lower)) continue;
@@ -59,6 +82,10 @@ function extractEmails(html) {
 
         // Skip very long emails (likely encoded data)
         if (lower.length > 60) continue;
+
+        // Skip emails with hex-hash-like local parts (e.g. Sentry DSN hashes)
+        const localPart = lower.split('@')[0];
+        if (/^[a-f0-9]{16,}$/.test(localPart)) continue;
 
         emails.push(lower);
     }

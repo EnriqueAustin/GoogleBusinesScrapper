@@ -560,14 +560,14 @@ app.post('/api/jobs/batch', async (req, res) => {
 });
 
 /**
- * DELETE /api/jobs/clear — remove completed/failed jobs from history
+ * DELETE /api/jobs/clear — remove completed/failed/stalled jobs from history
  */
 app.delete('/api/jobs/clear', async (req, res) => {
     try {
         await prisma.job.deleteMany({
             where: {
                 status: {
-                    in: ['completed', 'failed']
+                    in: ['completed', 'failed', 'stalled']
                 }
             }
         });
@@ -579,7 +579,7 @@ app.delete('/api/jobs/clear', async (req, res) => {
 });
 
 /**
- * POST /api/jobs/:id/cancel — cancel a waiting/active job
+ * POST /api/jobs/:id/cancel — cancel a waiting/active/stalled job
  */
 app.post('/api/jobs/:id/cancel', async (req, res) => {
     try {
@@ -593,12 +593,12 @@ app.post('/api/jobs/:id/cancel', async (req, res) => {
         const bullJob = await scraperQueue.getJob(jobId);
 
         if (bullJob) {
-            await bullJob.remove();
+            try { await bullJob.remove(); } catch { /* job may not exist in Redis anymore */ }
         }
 
         await prisma.job.update({
             where: { id: jobId },
-            data: { status: 'failed', completedAt: new Date() } // Mark cancelled as failed
+            data: { status: 'failed', completedAt: new Date() }
         });
 
         res.json({ message: 'Job cancelled' });
@@ -623,7 +623,7 @@ app.delete('/api/jobs/:id', async (req, res) => {
 
         // Remove from bull queue if it exists
         if (bullJob) {
-            await bullJob.remove();
+            try { await bullJob.remove(); } catch { /* job may be locked or already gone from Redis */ }
         }
 
         // Delete from postgres
@@ -639,7 +639,7 @@ app.delete('/api/jobs/:id', async (req, res) => {
 });
 
 /**
- * POST /api/jobs/:id/retry — retry a failed/cancelled job
+ * POST /api/jobs/:id/retry — retry a failed/stalled/cancelled job
  */
 app.post('/api/jobs/:id/retry', async (req, res) => {
     try {
@@ -647,6 +647,9 @@ app.post('/api/jobs/:id/retry', async (req, res) => {
         const jobRecord = await prisma.job.findUnique({ where: { id: jobId } });
 
         if (!jobRecord) return res.status(404).json({ error: 'Job not found' });
+        if (!['failed', 'stalled', 'completed'].includes(jobRecord.status)) {
+            return res.status(400).json({ error: `Cannot retry a job with status "${jobRecord.status}"` });
+        }
 
         const { addScrapeJob } = require('./src/queue/scraperQueue');
         const params = jobRecord.params ? JSON.parse(jobRecord.params) : {};
@@ -665,6 +668,50 @@ app.post('/api/jobs/:id/retry', async (req, res) => {
     } catch (err) {
         console.error('Error retrying job:', err);
         res.status(500).json({ error: 'Failed to retry job' });
+    }
+});
+
+/**
+ * POST /api/jobs/requeue-stalled — re-queue all stalled jobs as new jobs
+ */
+app.post('/api/jobs/requeue-stalled', async (req, res) => {
+    try {
+        const stalledJobs = await prisma.job.findMany({
+            where: { status: 'stalled' }
+        });
+
+        if (stalledJobs.length === 0) {
+            return res.json({ message: 'No stalled jobs to re-queue', count: 0 });
+        }
+
+        const { addScrapeJob } = require('./src/queue/scraperQueue');
+        const newJobIds = [];
+
+        for (const stalledJob of stalledJobs) {
+            const params = stalledJob.params ? JSON.parse(stalledJob.params) : {};
+            const bullJob = await addScrapeJob(stalledJob.query, params);
+
+            await prisma.job.create({
+                data: {
+                    id: String(bullJob.id),
+                    query: stalledJob.query,
+                    status: 'waiting',
+                    params: stalledJob.params
+                }
+            });
+
+            newJobIds.push(bullJob.id);
+        }
+
+        // Delete the old stalled job records
+        await prisma.job.deleteMany({
+            where: { status: 'stalled' }
+        });
+
+        res.json({ message: `Re-queued ${newJobIds.length} stalled job(s)`, count: newJobIds.length, jobIds: newJobIds });
+    } catch (err) {
+        console.error('Error re-queuing stalled jobs:', err);
+        res.status(500).json({ error: 'Failed to re-queue stalled jobs' });
     }
 });
 

@@ -7,6 +7,23 @@ const { enrichWebsite } = require('./enricher');
 const config = require('./config');
 const { log, humanDelay } = require('./utils');
 
+// ── Startup Recovery ─────────────────────────────────────────────────
+// Mark any leftover 'active' jobs as 'stalled' (catches ungraceful shutdowns)
+(async () => {
+    try {
+        const stalledCount = await prisma.job.updateMany({
+            where: { status: 'active' },
+            data: { status: 'stalled' }
+        });
+        if (stalledCount.count > 0) {
+            log('warn', `Startup recovery: Marked ${stalledCount.count} leftover active job(s) as stalled`);
+        }
+    } catch (e) {
+        log('error', `Startup recovery failed: ${e.message}`);
+    }
+})();
+
+// ── Worker Setup ─────────────────────────────────────────────────────
 const scraperWorker = new Worker('scraperQueue', async (job) => {
     const { query, params } = job.data;
     log('info', `\n==== Worker started job ${job.id} for query: "${query}" ====`);
@@ -109,9 +126,17 @@ const scraperWorker = new Worker('scraperQueue', async (job) => {
 
         throw error;
     }
-}, { connection, concurrency: 1 });
+}, {
+    connection,
+    concurrency: 1,
+    lockDuration: 600000,      // 10 minutes — scrapes are long-running
+    lockRenewTime: 60000,      // Renew lock every 60 seconds
+    stalledInterval: 300000,   // Check for stalled jobs every 5 minutes
+    maxStalledCount: 0,        // Do NOT auto-retry stalled jobs — mark as stalled instead
+});
 
-// Worker lifecycle events — keep process alive
+// ── Worker Lifecycle Events ──────────────────────────────────────────
+
 scraperWorker.on('completed', (job, result) => {
     log('success', `Job ${job.id} completed with result: ${JSON.stringify(result)}`);
 });
@@ -120,9 +145,52 @@ scraperWorker.on('failed', (job, err) => {
     log('error', `Job ${job.id} failed: ${err.message}`);
 });
 
+scraperWorker.on('stalled', async (jobId) => {
+    log('warn', `Job ${jobId} stalled — marking as stalled in database`);
+    try {
+        await prisma.job.update({
+            where: { id: String(jobId) },
+            data: { status: 'stalled' }
+        });
+    } catch (e) {
+        log('error', `Failed to mark stalled job ${jobId}: ${e.message}`);
+    }
+});
+
 scraperWorker.on('error', (err) => {
     log('error', `Worker error: ${err.message}`);
 });
+
+// ── Graceful Shutdown ────────────────────────────────────────────────
+// On shutdown, mark all active and waiting jobs as 'stalled'
+async function gracefulShutdown(signal) {
+    log('warn', `Received ${signal} — shutting down gracefully...`);
+
+    try {
+        // Stop accepting new jobs
+        await scraperWorker.close();
+        log('info', 'Worker closed, no longer accepting jobs');
+
+        // Mark active & waiting jobs as stalled so they can be re-queued from the frontend
+        const result = await prisma.job.updateMany({
+            where: { status: { in: ['active', 'waiting'] } },
+            data: { status: 'stalled' }
+        });
+
+        if (result.count > 0) {
+            log('warn', `Marked ${result.count} active/waiting job(s) as stalled`);
+        }
+    } catch (e) {
+        log('error', `Shutdown error: ${e.message}`);
+    } finally {
+        await prisma.$disconnect();
+        log('info', 'Shutdown complete');
+        process.exit(0);
+    }
+}
+
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 
 // Keep process alive
 process.on('unhandledRejection', (reason) => {

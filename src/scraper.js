@@ -394,7 +394,7 @@ async function scrapeGoogleMaps(query, maxResults) {
                     // Deduplicate within this scrape session using name + address
                     const dedupKey = `${data.name}|${data.address}`;
                     if (seenBusinesses.has(dedupKey)) {
-                        log('info', `[${i + 1}] Skipping duplicate: ${data.name}`);
+                        log('info', `[Card ${i + 1}] Skipping duplicate: ${data.name} (already result #${logIndex})`);
                     } else {
                         seenBusinesses.add(dedupKey);
                         results.push(data);

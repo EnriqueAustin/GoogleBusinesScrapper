@@ -13,12 +13,12 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Play, RotateCw, Trash2, XCircle } from "lucide-react";
+import { Play, RotateCw, Trash2, XCircle, AlertTriangle } from "lucide-react";
 
 interface Job {
     id: string;
     query: string;
-    status: "waiting" | "active" | "completed" | "failed";
+    status: "waiting" | "active" | "completed" | "failed" | "stalled";
     resultsCount: number;
     durationMs: number | null;
     createdAt: string;
@@ -100,13 +100,24 @@ export default function JobsPage() {
     };
 
     const handleClearHistory = async () => {
-        if (!confirm("Delete all completed and failed jobs?")) return;
+        if (!confirm("Delete all completed, failed, and stalled jobs?")) return;
         try {
             await axios.delete("http://localhost:3001/api/jobs/clear");
             fetchJobs();
         } catch (err) {
             console.error(err);
             alert("Failed to clear history");
+        }
+    };
+
+    const handleRequeueAllStalled = async () => {
+        if (!confirm("Re-queue all stalled jobs?")) return;
+        try {
+            await axios.post("http://localhost:3001/api/jobs/requeue-stalled");
+            fetchJobs();
+        } catch (err) {
+            console.error(err);
+            alert("Failed to re-queue stalled jobs");
         }
     };
 
@@ -118,6 +129,8 @@ export default function JobsPage() {
                 return <Badge className="bg-blue-500 hover:bg-blue-600 animate-pulse">Running</Badge>;
             case "failed":
                 return <Badge variant="destructive">Failed</Badge>;
+            case "stalled":
+                return <Badge className="bg-amber-500 hover:bg-amber-600">Stalled</Badge>;
             default:
                 return <Badge variant="secondary">Waiting in Queue</Badge>;
         }
@@ -163,13 +176,20 @@ export default function JobsPage() {
             </Card>
 
             <div className="space-y-4">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
                     <h2 className="text-xl font-semibold tracking-tight">Recent Jobs</h2>
-                    {jobs.some(j => j.status === 'completed' || j.status === 'failed') && (
-                        <Button variant="outline" size="sm" onClick={handleClearHistory} className="text-muted-foreground hover:text-foreground">
-                            <Trash2 className="w-4 h-4 mr-2" /> Clear History
-                        </Button>
-                    )}
+                    <div className="flex gap-2 ml-auto">
+                        {jobs.some(j => j.status === 'stalled') && (
+                            <Button variant="outline" size="sm" onClick={handleRequeueAllStalled} className="text-amber-600 hover:text-amber-700 hover:bg-amber-600/10">
+                                <RotateCw className="w-4 h-4 mr-2" /> Re-queue All Stalled
+                            </Button>
+                        )}
+                        {jobs.some(j => j.status === 'completed' || j.status === 'failed' || j.status === 'stalled') && (
+                            <Button variant="outline" size="sm" onClick={handleClearHistory} className="text-muted-foreground hover:text-foreground">
+                                <Trash2 className="w-4 h-4 mr-2" /> Clear History
+                            </Button>
+                        )}
+                    </div>
                 </div>
 
                 {loading && jobs.length === 0 ? (
@@ -212,9 +232,9 @@ export default function JobsPage() {
                                                 <XCircle className="w-4 h-4 mr-2" /> Cancel
                                             </Button>
                                         )}
-                                        {(job.status === "failed" || job.status === "completed") && (
+                                        {(job.status === "failed" || job.status === "completed" || job.status === "stalled") && (
                                             <Button variant="ghost" size="sm" onClick={() => handleRetry(job.id)} className="w-full sm:w-auto">
-                                                <RotateCw className="w-4 h-4 mr-2" /> Retry
+                                                <RotateCw className="w-4 h-4 mr-2" /> {job.status === "stalled" ? "Re-queue" : "Retry"}
                                             </Button>
                                         )}
                                         <Button variant="ghost" size="sm" onClick={() => handleDelete(job.id)} className="text-destructive hover:bg-destructive/10 w-full sm:w-auto">
