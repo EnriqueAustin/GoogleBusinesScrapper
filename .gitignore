@@ -20,4 +20,9 @@ Thumbs.db
 
 # Lockfiles
 package-lock.json
+
+# Prisma generated
 /src/generated/prisma
+
+# Next.js
+frontend/.next/
