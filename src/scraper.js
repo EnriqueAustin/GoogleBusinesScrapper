@@ -244,6 +244,22 @@ async function scrapeGoogleMaps(query, maxResults) {
 
     const page = await context.newPage();
 
+    // PERFORMANCE OPTIMIZATION: Block unnecessary resource types
+    // We only need the DOM for business details, so downloading images, fonts,
+    // and styles wastes massive amounts of CPU and bandwidth. However, we must be
+    // careful not to block stylesheets completely as it can cause elements to overlap
+    // and break pointer interactions (which happened with the canvas overlay).
+    await page.route('**/*', (route) => {
+        const type = route.request().resourceType();
+        const blockedTypes = ['image', 'font', 'media'];
+
+        if (blockedTypes.includes(type)) {
+            route.abort();
+        } else {
+            route.continue();
+        }
+    });
+
     try {
         // Navigate to Google Maps with retry logic
         log('info', 'Navigating to Google Maps...');

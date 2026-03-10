@@ -44,10 +44,20 @@ async function setup() {
     step(1, 'Checking Docker...');
     try {
         execSync('docker info', { stdio: 'pipe' });
-        console.log('  ✓ Docker is running');
-    } catch {
-        console.error('  ❌ Docker is not running!');
-        console.error('  Please start Docker Desktop and try again.');
+        console.log('  ✓ Docker is running and accessible');
+    } catch (err) {
+        const errorString = err.stderr ? err.stderr.toString() : err.message;
+        if (errorString.includes('permission denied') || errorString.includes('dial unix /var/run/docker.sock')) {
+            console.error('\n  ❌ Docker is installed, but your user does not have permission to use it!');
+            console.error('  To fix this on Linux, run the following commands:');
+            console.error('\n    sudo groupadd docker');
+            console.error('    sudo usermod -aG docker $USER');
+            console.error('\n  Then log out and log back in, or run: newgrp docker');
+            console.error('  Alternatively, you can temporarily grant access with: sudo chmod 666 /var/run/docker.sock\n');
+        } else {
+            console.error('\n  ❌ Docker is not running or not installed!');
+            console.error('  Please install and start Docker Desktop (Windows/Mac) or Docker Engine (Linux), and try again.\n');
+        }
         process.exit(1);
     }
 

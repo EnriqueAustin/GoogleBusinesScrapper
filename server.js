@@ -2,7 +2,6 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const config = require('./src/config');
-const config = require('./src/config');
 const { enrichWebsite } = require('./src/enricher');
 const { prisma, exportAllCsv } = require('./src/exporter');
 
@@ -501,8 +500,14 @@ app.post('/api/jobs', async (req, res) => {
         const job = await addScrapeJob(query, params);
 
         // Ensure a DB record exists initially
-        await prisma.job.create({
-            data: {
+        await prisma.job.upsert({
+            where: { id: String(job.id) },
+            update: {
+                query: query,
+                status: 'waiting',
+                params: params ? JSON.stringify(params) : null
+            },
+            create: {
                 id: String(job.id),
                 query: query,
                 status: 'waiting',
