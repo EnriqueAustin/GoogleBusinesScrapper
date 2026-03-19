@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
 import Link from 'next/link';
-import { LayoutDashboard, Users, Activity, Settings, PhoneCall } from 'lucide-react';
+import { LayoutDashboard, Users, Activity, Settings, PhoneCall, ListTodo, BarChart } from 'lucide-react';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -34,7 +34,13 @@ export default function RootLayout({
                 <Users className="w-4 h-4" /> Leads Data
               </Link>
               <Link href="/crm" className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-primary transition-colors">
-                <PhoneCall className="w-4 h-4" /> CRM
+                <PhoneCall className="w-4 h-4" /> CRM Dialer
+              </Link>
+              <Link href="/crm/tasks" className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-primary transition-colors">
+                <ListTodo className="w-4 h-4" /> Sales Tasks
+              </Link>
+              <Link href="/crm/analytics" className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-primary transition-colors">
+                <BarChart className="w-4 h-4" /> Pipeline Stats
               </Link>
               <Link href="/jobs" className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-primary transition-colors">
                 <Activity className="w-4 h-4" /> Job Queue

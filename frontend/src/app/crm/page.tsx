@@ -38,10 +38,13 @@ interface Lead {
     emails: string | null;
     notes: string | null;
     hasWebsite: boolean;
+    estimatedValue: number | null;
+    websitePainPoints: string | null;
 }
 
 interface CallLog {
     id: number;
+    type: string;
     outcome: string;
     notes: string | null;
     duration: number | null;
@@ -132,6 +135,8 @@ export default function CRMPage() {
     const [followUpDate, setFollowUpDate] = useState("");
     const [qualNotes, setQualNotes] = useState("");
     const [overrideStatus, setOverrideStatus] = useState("");
+    const [activityType, setActivityType] = useState("call");
+    const [estimatedValue, setEstimatedValue] = useState("");
 
     const currentLead = queue[queueIdx] ?? null;
 
@@ -196,6 +201,8 @@ export default function CRMPage() {
         setCallNotes("");
         setCallDuration("");
         setFollowUpDate("");
+        setActivityType("call");
+        setEstimatedValue(currentLead?.estimatedValue ? currentLead.estimatedValue.toString() : "");
         setOverrideStatus(currentLead?.crmStatus || "attempting");
         setShowCallModal(true);
     };
@@ -211,25 +218,33 @@ export default function CRMPage() {
         setSavingCall(true);
         try {
             await axios.post(`${API}/leads/${currentLead.id}/calls`, {
+                type: activityType,
                 outcome: callOutcome,
                 notes: callNotes || null,
                 duration: callDuration ? parseInt(callDuration) * 60 : null,
                 crmStatus: overrideStatus,
             });
-            if (followUpDate) {
-                await axios.patch(`${API}/leads/${currentLead.id}/crm`, { nextFollowUp: followUpDate });
+
+            const patchData: any = {};
+            if (followUpDate) patchData.nextFollowUp = followUpDate;
+            if (qualNotes !== currentLead.qualificationNotes) patchData.qualificationNotes = qualNotes;
+            if (estimatedValue !== (currentLead.estimatedValue?.toString() || "")) {
+                patchData.estimatedValue = estimatedValue ? parseFloat(estimatedValue) : null;
             }
-            if (qualNotes !== currentLead.qualificationNotes) {
-                await axios.patch(`${API}/leads/${currentLead.id}/crm`, { qualificationNotes: qualNotes });
+
+            if (Object.keys(patchData).length > 0) {
+                await axios.patch(`${API}/leads/${currentLead.id}/crm`, patchData);
             }
+
             // Refresh current lead in queue
             setQueue(q => q.map(l => l.id === currentLead.id ? {
                 ...l,
                 crmStatus: overrideStatus,
-                callCount: l.callCount + 1,
+                callCount: activityType === 'call' ? l.callCount + 1 : l.callCount,
                 lastCalledAt: new Date().toISOString(),
-                nextFollowUp: followUpDate || l.nextFollowUp,
-                qualificationNotes: qualNotes || l.qualificationNotes,
+                nextFollowUp: patchData.nextFollowUp || l.nextFollowUp,
+                qualificationNotes: patchData.qualificationNotes || l.qualificationNotes,
+                estimatedValue: patchData.estimatedValue !== undefined ? patchData.estimatedValue : l.estimatedValue,
             } : l));
             fetchCallLogs(currentLead.id);
             fetchStats();
@@ -651,15 +666,25 @@ export default function CRMPage() {
                 <DialogContent className="max-w-lg">
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2">
-                            <PhoneCall className="h-5 w-5 text-primary" />
-                            Log Call — {currentLead?.name}
+                            <Activity className="h-5 w-5 text-primary" />
+                            Log Activity — {currentLead?.name}
                         </DialogTitle>
                     </DialogHeader>
 
                     <div className="space-y-4 pt-1">
+                        {/* Activity Type Selector */}
+                        <div className="flex bg-muted p-1 rounded-lg">
+                            {["call", "email", "note"].map((type) => (
+                                <button key={type} onClick={() => setActivityType(type)}
+                                    className={`flex-1 text-xs py-1.5 capitalize rounded-md transition-colors ${activityType === type ? "bg-background shadow font-medium" : "text-muted-foreground hover:text-foreground"}`}>
+                                    {type}
+                                </button>
+                            ))}
+                        </div>
+
                         {/* Outcome Selector */}
                         <div className="space-y-2">
-                            <label className="text-xs font-medium text-muted-foreground">Call Outcome *</label>
+                            <label className="text-xs font-medium text-muted-foreground">Activity Outcome *</label>
                             <div className="grid grid-cols-2 gap-2">
                                 {CALL_OUTCOMES.map(({ key, label, icon: Icon, color }) => (
                                     <button key={key}
@@ -717,6 +742,17 @@ export default function CRMPage() {
                                     className="h-8 text-sm" />
                             </div>
                         </div>
+
+                        {/* Deal Revenue */}
+                        {(overrideStatus === "qualified" || overrideStatus === "connected" || overrideStatus === "closed_won") && (
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-medium text-emerald-500 font-bold flex items-center gap-1">
+                                    <Target className="h-3 w-3" /> Estimated Deal Value ($)
+                                </label>
+                                <Input type="number" value={estimatedValue} onChange={e => setEstimatedValue(e.target.value)}
+                                    placeholder="e.g. 2500" className="h-8 text-sm border-emerald-500/30 bg-emerald-500/5 focus-visible:ring-emerald-500" />
+                            </div>
+                        )}
 
                         {/* Qual notes */}
                         <div className="space-y-1.5">

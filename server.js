@@ -833,6 +833,57 @@ app.get('/api/crm/stats', async (req, res) => {
 });
 
 /**
+ * GET /api/crm/analytics — pipeline value funnel and activity activity
+ */
+app.get('/api/crm/analytics', async (req, res) => {
+    try {
+        // 1. Pipeline Value grouping by status
+        const pipelineValue = await prisma.lead.groupBy({
+            by: ['crmStatus'],
+            _sum: { estimatedValue: true },
+            _count: { id: true },
+            where: {
+                crmStatus: { notIn: ['disqualified', 'closed_lost'] }
+            }
+        });
+
+        // 2. Activity counts by type
+        const activities = await prisma.callLog.groupBy({
+            by: ['type'],
+            _count: { id: true },
+        });
+
+        res.json({ pipelineValue, activities });
+    } catch (err) {
+        console.error('CRM analytics error:', err);
+        res.status(500).json({ error: 'Database error' });
+    }
+});
+
+/**
+ * GET /api/crm/tasks — targeted follow-up tasks
+ */
+app.get('/api/crm/tasks', async (req, res) => {
+    try {
+        const tasks = await prisma.lead.findMany({
+            where: {
+                nextFollowUp: { lte: new Date(new Date().setHours(23, 59, 59, 999)) },
+                crmStatus: { notIn: ['closed_won', 'closed_lost', 'disqualified'] }
+            },
+            orderBy: [
+                { nextFollowUp: 'asc' },
+                { leadScore: 'desc' }
+            ],
+            take: 100
+        });
+        res.json(tasks);
+    } catch (err) {
+        console.error('CRM tasks error:', err);
+        res.status(500).json({ error: 'Database error' });
+    }
+});
+
+/**
  * GET /api/crm/queue — smart prioritized queue for dialer
  * Ordered: follow-ups due first, then by leadScore desc, uncontacted first
  */
@@ -874,7 +925,7 @@ app.get('/api/crm/queue', async (req, res) => {
 app.patch('/api/leads/:id/crm', async (req, res) => {
     try {
         const leadId = parseInt(req.params.id);
-        const { crmStatus, nextFollowUp, qualificationNotes } = req.body;
+        const { crmStatus, nextFollowUp, qualificationNotes, estimatedValue, websitePainPoints } = req.body;
 
         const existing = await prisma.lead.findUnique({ where: { id: leadId } });
         if (!existing) return res.status(404).json({ error: 'Lead not found' });
@@ -883,6 +934,8 @@ app.patch('/api/leads/:id/crm', async (req, res) => {
         if (crmStatus !== undefined) data.crmStatus = crmStatus;
         if (nextFollowUp !== undefined) data.nextFollowUp = nextFollowUp ? new Date(nextFollowUp) : null;
         if (qualificationNotes !== undefined) data.qualificationNotes = qualificationNotes;
+        if (estimatedValue !== undefined) data.estimatedValue = estimatedValue ? parseFloat(estimatedValue) : null;
+        if (websitePainPoints !== undefined) data.websitePainPoints = websitePainPoints;
 
         const updated = await prisma.lead.update({ where: { id: leadId }, data });
 
@@ -912,21 +965,21 @@ app.patch('/api/leads/:id/crm', async (req, res) => {
 app.post('/api/leads/:id/calls', async (req, res) => {
     try {
         const leadId = parseInt(req.params.id);
-        const { outcome, notes, duration, crmStatus } = req.body;
+        const { type = 'call', outcome, notes, duration, crmStatus } = req.body;
 
         if (!outcome) return res.status(400).json({ error: 'Missing outcome' });
 
         const existing = await prisma.lead.findUnique({ where: { id: leadId } });
         if (!existing) return res.status(404).json({ error: 'Lead not found' });
 
-        // Create call log
+        // Create call log / activity
         const callLog = await prisma.callLog.create({
-            data: { leadId, outcome, notes: notes || null, duration: duration || null }
+            data: { leadId, type, outcome, notes: notes || null, duration: duration || null }
         });
 
-        // Update lead: increment callCount, set lastCalledAt, optionally update crmStatus
+        // Update lead: increment activity count, set lastCalledAt, optionally update crmStatus
         const updateData = {
-            callCount: { increment: 1 },
+            callCount: { increment: type === 'call' ? 1 : 0 },
             lastCalledAt: new Date(),
         };
         if (crmStatus) updateData.crmStatus = crmStatus;

@@ -40,7 +40,10 @@ model Lead {
   lastCalledAt       DateTime?
   nextFollowUp       DateTime?
   qualificationNotes String?
+  estimatedValue     Float?
+  websitePainPoints  String?
 
+  // Relations
   logs          LeadLog[]
   calls         CallLog[]
 

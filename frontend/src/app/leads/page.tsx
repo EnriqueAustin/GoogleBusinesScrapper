@@ -15,9 +15,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
+    History, ChevronDown, ChevronUp, X, Pencil, Check, MapPin,
+    Phone, CheckCircle2, Trophy, Ban, XCircle, PhoneIncoming, Users, PhoneCall,
     ExternalLink, Search, Star, Download, Eye, Zap, Trash2,
     ArrowUpDown, ArrowUp, ArrowDown, Filter, Upload, Copy, RefreshCw,
-    History, ChevronDown, ChevronUp, X, Pencil, Check, MapPin,
 } from "lucide-react";
 
 interface Lead {
@@ -42,6 +43,38 @@ interface Lead {
     notes: string | null;
     tags: string | null;
     customFields: Record<string, string> | null;
+    // CRM Fields
+    crmStatus: string;
+    callCount: number;
+    lastCalledAt: string | null;
+    nextFollowUp: string | null;
+    qualificationNotes: string | null;
+}
+
+// ── CRM Constants ──────────────────────────────────────────────────────────────
+
+const CRM_STATUSES: { key: string; label: string; color: string; bg: string; border: string; icon: React.ElementType }[] = [
+    { key: "new", label: "New", color: "text-slate-400", bg: "bg-slate-500/10", border: "border-slate-500/30", icon: Users },
+    { key: "attempting", label: "Attempting", color: "text-amber-400", bg: "bg-amber-500/10", border: "border-amber-500/30", icon: Phone },
+    { key: "connected", label: "Connected", color: "text-blue-400", bg: "bg-blue-500/10", border: "border-blue-500/30", icon: PhoneIncoming },
+    { key: "qualified", label: "Qualified", color: "text-emerald-400", bg: "bg-emerald-500/10", border: "border-emerald-500/30", icon: CheckCircle2 },
+    { key: "closed_won", label: "Closed Won", color: "text-purple-400", bg: "bg-purple-500/10", border: "border-purple-500/30", icon: Trophy },
+    { key: "disqualified", label: "Disqualified", color: "text-red-400", bg: "bg-red-500/10", border: "border-red-500/30", icon: Ban },
+    { key: "closed_lost", label: "Closed Lost", color: "text-zinc-500", bg: "bg-zinc-500/10", border: "border-zinc-500/30", icon: XCircle },
+];
+
+function getStatusInfo(key: string) {
+    return CRM_STATUSES.find(s => s.key === key) ?? CRM_STATUSES[0];
+}
+
+function StatusBadge({ status }: { status: string }) {
+    const info = getStatusInfo(status);
+    return (
+        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border ${info.bg} ${info.color} ${info.border}`}>
+            <info.icon className="h-2.5 w-2.5" />
+            {info.label}
+        </span>
+    );
 }
 
 interface AuditLog {
@@ -483,7 +516,8 @@ export default function LeadsPage() {
                             <TableHead className="cursor-pointer select-none" onClick={() => handleSort("leadScore")}>
                                 <span className="flex items-center">Score <SortIcon col="leadScore" /></span>
                             </TableHead>
-                            <TableHead className="hidden lg:table-cell">Status</TableHead>
+                            <TableHead className="hidden lg:table-cell">Web</TableHead>
+                            <TableHead>CRM Status</TableHead>
                             <TableHead className="text-right">Actions</TableHead>
                         </TableRow>
                     </TableHeader>
@@ -530,15 +564,32 @@ export default function LeadsPage() {
                                     </TableCell>
                                     <TableCell className="hidden lg:table-cell">
                                         {lead.hasWebsite ? (
-                                            <Badge variant="outline" className="border-emerald-500/50 text-emerald-500 font-normal text-xs">Web</Badge>
+                                            <Badge variant="outline" className="border-emerald-500/50 text-emerald-500 font-normal text-xs">Yes</Badge>
                                         ) : (
-                                            <Badge variant="outline" className="border-amber-500/50 text-amber-500 font-normal text-xs">Prospect</Badge>
+                                            <Badge variant="outline" className="border-amber-500/50 text-amber-400 font-normal text-xs">No</Badge>
                                         )}
                                     </TableCell>
+                                    <TableCell>
+                                        <div className="flex flex-col gap-1 items-start">
+                                            <StatusBadge status={lead.crmStatus} />
+                                            {lead.callCount > 0 && (
+                                                <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
+                                                    <Phone className="h-2 w-2" /> {lead.callCount} calls
+                                                </span>
+                                            )}
+                                        </div>
+                                    </TableCell>
                                     <TableCell className="text-right">
-                                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openLeadDetail(lead)}>
-                                            <Eye className="h-3.5 w-3.5" />
-                                        </Button>
+                                        <div className="flex justify-end gap-1">
+                                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openLeadDetail(lead)} title="View Details">
+                                                <Eye className="h-3.5 w-3.5" />
+                                            </Button>
+                                            <Button variant="ghost" size="icon" className="h-7 w-7 text-primary" asChild title="Open in CRM">
+                                                <a href="/crm">
+                                                    <PhoneCall className="h-3.5 w-3.5" />
+                                                </a>
+                                            </Button>
+                                        </div>
                                     </TableCell>
                                 </TableRow>
                             ))
@@ -602,6 +653,23 @@ export default function LeadsPage() {
                                             <span className="col-span-3 text-sm">{val || "—"}</span>
                                         </div>
                                     ))}
+
+                                    <div className="grid grid-cols-4 items-center gap-3">
+                                        <span className="text-right font-medium text-muted-foreground text-sm">CRM Status</span>
+                                        <div className="col-span-3">
+                                            <StatusBadge status={selectedLead.crmStatus} />
+                                        </div>
+                                    </div>
+
+                                    {selectedLead.callCount > 0 && (
+                                        <div className="grid grid-cols-4 items-center gap-3">
+                                            <span className="text-right font-medium text-muted-foreground text-sm">Calls</span>
+                                            <span className="col-span-3 text-sm">
+                                                {selectedLead.callCount} total
+                                                {selectedLead.lastCalledAt && ` • last: ${formatDistanceToNow(new Date(selectedLead.lastCalledAt), { addSuffix: true })}`}
+                                            </span>
+                                        </div>
+                                    )}
 
                                     <div className="grid grid-cols-4 items-center gap-3">
                                         <span className="text-right font-medium text-muted-foreground text-sm">Website</span>
