@@ -34,7 +34,15 @@ model Lead {
   scrapedAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
+  // CRM Sales Pipeline Fields
+  crmStatus          String   @default("new")     // new | attempting | connected | qualified | disqualified | closed_won | closed_lost
+  callCount          Int      @default(0)
+  lastCalledAt       DateTime?
+  nextFollowUp       DateTime?
+  qualificationNotes String?
+
   logs          LeadLog[]
+  calls         CallLog[]
 
   @@unique([name, address])
   @@index([hasWebsite])
@@ -43,6 +51,8 @@ model Lead {
   @@index([rating])
   @@index([leadScore])
   @@index([city])
+  @@index([crmStatus])
+  @@index([nextFollowUp])
 }
 
 model LeadLog {
@@ -53,6 +63,18 @@ model LeadLog {
   field     String?
   oldValue  String?
   newValue  String?
+  createdAt DateTime @default(now())
+
+  @@index([leadId])
+}
+
+model CallLog {
+  id        Int      @id @default(autoincrement())
+  leadId    Int
+  lead      Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  outcome   String   // answered | voicemail | no_answer | callback | interested | not_interested | left_message
+  notes     String?
+  duration  Int?     // seconds
   createdAt DateTime @default(now())
 
   @@index([leadId])

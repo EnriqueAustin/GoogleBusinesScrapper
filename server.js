@@ -796,6 +796,180 @@ app.post('/api/settings', async (req, res) => {
     }
 });
 
+// ── CRM Sales Pipeline Endpoints ──────────────────────────────────────────
+
+/**
+ * GET /api/crm/stats — pipeline counts per CRM status
+ */
+app.get('/api/crm/stats', async (req, res) => {
+    try {
+        const statuses = ['new', 'attempting', 'connected', 'qualified', 'disqualified', 'closed_won', 'closed_lost'];
+        const counts = await prisma.lead.groupBy({
+            by: ['crmStatus'],
+            _count: { crmStatus: true },
+        });
+
+        const statsMap = {};
+        for (const s of statuses) statsMap[s] = 0;
+        for (const c of counts) {
+            if (statsMap[c.crmStatus] !== undefined) {
+                statsMap[c.crmStatus] = c._count.crmStatus;
+            }
+        }
+
+        const totalCalls = await prisma.callLog.count();
+        const followUpsDueToday = await prisma.lead.count({
+            where: {
+                nextFollowUp: { lte: new Date(new Date().setHours(23, 59, 59, 999)) },
+                crmStatus: { notIn: ['closed_won', 'closed_lost', 'disqualified'] }
+            }
+        });
+
+        res.json({ ...statsMap, totalCalls, followUpsDueToday });
+    } catch (err) {
+        console.error('CRM stats error:', err);
+        res.status(500).json({ error: 'Database error' });
+    }
+});
+
+/**
+ * GET /api/crm/queue — smart prioritized queue for dialer
+ * Ordered: follow-ups due first, then by leadScore desc, uncontacted first
+ */
+app.get('/api/crm/queue', async (req, res) => {
+    try {
+        const { status = 'all', minScore = '0', limit = '50' } = req.query;
+
+        const where = {
+            leadScore: { gte: parseInt(minScore) || 0 },
+        };
+
+        if (status !== 'all') {
+            where.crmStatus = status;
+        } else {
+            // Default: exclude closed/disqualified
+            where.crmStatus = { notIn: ['closed_won', 'closed_lost', 'disqualified'] };
+        }
+
+        const leads = await prisma.lead.findMany({
+            where,
+            orderBy: [
+                { nextFollowUp: 'asc' },
+                { crmStatus: 'asc' },  // new before attempting before connected
+                { leadScore: 'desc' },
+            ],
+            take: parseInt(limit) || 50,
+        });
+
+        res.json(leads);
+    } catch (err) {
+        console.error('CRM queue error:', err);
+        res.status(500).json({ error: 'Database error' });
+    }
+});
+
+/**
+ * PATCH /api/leads/:id/crm — update CRM status fields
+ */
+app.patch('/api/leads/:id/crm', async (req, res) => {
+    try {
+        const leadId = parseInt(req.params.id);
+        const { crmStatus, nextFollowUp, qualificationNotes } = req.body;
+
+        const existing = await prisma.lead.findUnique({ where: { id: leadId } });
+        if (!existing) return res.status(404).json({ error: 'Lead not found' });
+
+        const data = {};
+        if (crmStatus !== undefined) data.crmStatus = crmStatus;
+        if (nextFollowUp !== undefined) data.nextFollowUp = nextFollowUp ? new Date(nextFollowUp) : null;
+        if (qualificationNotes !== undefined) data.qualificationNotes = qualificationNotes;
+
+        const updated = await prisma.lead.update({ where: { id: leadId }, data });
+
+        // Log the status change
+        if (crmStatus && crmStatus !== existing.crmStatus) {
+            await prisma.leadLog.create({
+                data: {
+                    leadId,
+                    action: 'status_changed',
+                    field: 'crmStatus',
+                    oldValue: existing.crmStatus,
+                    newValue: crmStatus,
+                }
+            });
+        }
+
+        res.json(updated);
+    } catch (err) {
+        console.error('CRM update error:', err);
+        res.status(500).json({ error: 'Failed to update CRM status' });
+    }
+});
+
+/**
+ * POST /api/leads/:id/calls — log a call for a lead
+ */
+app.post('/api/leads/:id/calls', async (req, res) => {
+    try {
+        const leadId = parseInt(req.params.id);
+        const { outcome, notes, duration, crmStatus } = req.body;
+
+        if (!outcome) return res.status(400).json({ error: 'Missing outcome' });
+
+        const existing = await prisma.lead.findUnique({ where: { id: leadId } });
+        if (!existing) return res.status(404).json({ error: 'Lead not found' });
+
+        // Create call log
+        const callLog = await prisma.callLog.create({
+            data: { leadId, outcome, notes: notes || null, duration: duration || null }
+        });
+
+        // Update lead: increment callCount, set lastCalledAt, optionally update crmStatus
+        const updateData = {
+            callCount: { increment: 1 },
+            lastCalledAt: new Date(),
+        };
+        if (crmStatus) updateData.crmStatus = crmStatus;
+
+        const updatedLead = await prisma.lead.update({
+            where: { id: leadId },
+            data: updateData,
+        });
+
+        // Log call in audit trail
+        await prisma.leadLog.create({
+            data: {
+                leadId,
+                action: 'call_logged',
+                field: 'outcome',
+                newValue: `${outcome}${notes ? ` — ${notes.substring(0, 80)}` : ''}`,
+            }
+        });
+
+        res.json({ callLog, lead: updatedLead });
+    } catch (err) {
+        console.error('Call log error:', err);
+        res.status(500).json({ error: 'Failed to log call' });
+    }
+});
+
+/**
+ * GET /api/leads/:id/calls — get call history for a lead
+ */
+app.get('/api/leads/:id/calls', async (req, res) => {
+    try {
+        const leadId = parseInt(req.params.id);
+        const calls = await prisma.callLog.findMany({
+            where: { leadId },
+            orderBy: { createdAt: 'desc' },
+        });
+        res.json(calls);
+    } catch (err) {
+        console.error('Call history error:', err);
+        res.status(500).json({ error: 'Database error' });
+    }
+});
+
 app.listen(PORT, () => {
     console.log(`\n  ┌──────────────────────────────────────────────┐`);
     console.log(`  │                                              │`);

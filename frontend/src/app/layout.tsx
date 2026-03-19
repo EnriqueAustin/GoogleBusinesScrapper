@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
 import Link from 'next/link';
-import { LayoutDashboard, Users, Activity, Settings } from 'lucide-react';
+import { LayoutDashboard, Users, Activity, Settings, PhoneCall } from 'lucide-react';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -32,6 +32,9 @@ export default function RootLayout({
               </Link>
               <Link href="/leads" className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-primary transition-colors">
                 <Users className="w-4 h-4" /> Leads Data
+              </Link>
+              <Link href="/crm" className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-primary transition-colors">
+                <PhoneCall className="w-4 h-4" /> CRM
               </Link>
               <Link href="/jobs" className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-primary transition-colors">
                 <Activity className="w-4 h-4" /> Job Queue
