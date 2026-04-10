@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import axios from "axios";
+import { apiGet, apiPost, apiDelete } from "@/lib/api";
 import { formatDistanceToNow } from "date-fns";
 import {
     Card,
@@ -34,10 +34,11 @@ export default function JobsPage() {
 
     const fetchJobs = async () => {
         try {
-            const res = await axios.get("http://localhost:3001/api/jobs");
-            setJobs(res.data);
+            const data = await apiGet<Job[]>("/api/jobs");
+            setJobs(data);
         } catch (err) {
-            console.error(err);
+            // Silent on polling — only log at debug level
+            console.debug("[Jobs] fetch failed after retries", err);
         } finally {
             setLoading(false);
         }
@@ -57,7 +58,7 @@ export default function JobsPage() {
         setSubmitting(true);
         try {
             const queries = newQuery.split('\n').filter(q => q.trim().length > 0);
-            await axios.post("http://localhost:3001/api/jobs/batch", { queries });
+            await apiPost("/api/jobs/batch", { queries });
             setNewQuery("");
             await fetchJobs();
         } catch (err) {
@@ -70,7 +71,7 @@ export default function JobsPage() {
 
     const handleCancel = async (id: string) => {
         try {
-            await axios.post(`http://localhost:3001/api/jobs/${id}/cancel`);
+            await apiPost(`/api/jobs/${id}/cancel`);
             fetchJobs();
         } catch (err) {
             console.error(err);
@@ -80,7 +81,7 @@ export default function JobsPage() {
 
     const handleRetry = async (id: string) => {
         try {
-            await axios.post(`http://localhost:3001/api/jobs/${id}/retry`);
+            await apiPost(`/api/jobs/${id}/retry`);
             fetchJobs();
         } catch (err) {
             console.error(err);
@@ -91,7 +92,7 @@ export default function JobsPage() {
     const handleDelete = async (id: string) => {
         if (!confirm("Are you sure you want to permanently delete this job?")) return;
         try {
-            await axios.delete(`http://localhost:3001/api/jobs/${id}`);
+            await apiDelete(`/api/jobs/${id}`);
             fetchJobs();
         } catch (err) {
             console.error(err);
@@ -102,7 +103,7 @@ export default function JobsPage() {
     const handleClearHistory = async () => {
         if (!confirm("Delete all completed, failed, and stalled jobs?")) return;
         try {
-            await axios.delete("http://localhost:3001/api/jobs/clear");
+            await apiDelete("/api/jobs/clear");
             fetchJobs();
         } catch (err) {
             console.error(err);
@@ -113,7 +114,7 @@ export default function JobsPage() {
     const handleRequeueAllStalled = async () => {
         if (!confirm("Re-queue all stalled jobs?")) return;
         try {
-            await axios.post("http://localhost:3001/api/jobs/requeue-stalled");
+            await apiPost("/api/jobs/requeue-stalled");
             fetchJobs();
         } catch (err) {
             console.error(err);
@@ -221,7 +222,13 @@ export default function JobsPage() {
                                         <div className="flex justify-between sm:justify-end w-full gap-4">
                                             <span className="text-muted-foreground">Duration:</span>
                                             <span className="font-medium">
-                                                {job.durationMs ? `${(job.durationMs / 1000).toFixed(1)}s` : "---"}
+                                                {job.durationMs ? (() => {
+                                                    const totalSeconds = job.durationMs / 1000;
+                                                    if (totalSeconds < 60) return `${totalSeconds.toFixed(1)}s`;
+                                                    const mins = Math.floor(totalSeconds / 60);
+                                                    const secs = (totalSeconds % 60).toFixed(1);
+                                                    return `${mins}m ${secs}s`;
+                                                })() : "---"}
                                             </span>
                                         </div>
                                     </div>

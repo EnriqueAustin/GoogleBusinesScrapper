@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import axios from "axios";
+import { apiGet, apiPatch } from "@/lib/api";
 import { format, formatDistanceToNow, isToday, isBefore, startOfDay } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -31,7 +31,7 @@ export default function CRMTasksPage() {
     const fetchTasks = useCallback(async () => {
         setLoading(true);
         try {
-            const { data } = await axios.get("http://localhost:3001/api/crm/tasks");
+            const data = await apiGet("/api/crm/tasks");
             setTasks(data);
         } catch (e) {
             console.error(e);
@@ -49,7 +49,7 @@ export default function CRMTasksPage() {
         try {
             const tomorrow = new Date();
             tomorrow.setDate(tomorrow.getDate() + 1);
-            await axios.patch(`http://localhost:3001/api/leads/${id}/crm`, { nextFollowUp: tomorrow.toISOString() });
+            await apiPatch(`/api/leads/${id}/crm`, { nextFollowUp: tomorrow.toISOString() });
             setTasks(t => t.filter(x => x.id !== id));
         } catch (e) { }
     };

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import axios from "axios";
+import { apiGet } from "@/lib/api";
 import {
   Card,
   CardContent,
@@ -38,11 +38,10 @@ export default function OverviewPage() {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        // The API is running on port 3001
-        const res = await axios.get("http://localhost:3001/api/stats");
-        setStats(res.data);
+        const data = await apiGet<Stats>("/api/stats");
+        setStats(data);
       } catch (err) {
-        console.error("Failed to fetch stats", err);
+        console.debug("[Overview] Failed to fetch stats after retries", err);
       } finally {
         setLoading(false);
       }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef, useCallback } from "react";
-import axios from "axios";
+import { apiGet, apiPost, apiDelete, apiPatch, api } from "@/lib/api";
 import { format, formatDistanceToNow } from "date-fns";
 import {
     Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -19,6 +19,7 @@ import {
     Phone, CheckCircle2, Trophy, Ban, XCircle, PhoneIncoming, Users, PhoneCall,
     ExternalLink, Search, Star, Download, Eye, Zap, Trash2,
     ArrowUpDown, ArrowUp, ArrowDown, Filter, Upload, Copy, RefreshCw,
+    Globe, Hammer,
 } from "lucide-react";
 
 interface Lead {
@@ -49,6 +50,7 @@ interface Lead {
     lastCalledAt: string | null;
     nextFollowUp: string | null;
     qualificationNotes: string | null;
+    siteStatus: string;
 }
 
 // ── CRM Constants ──────────────────────────────────────────────────────────────
@@ -72,6 +74,24 @@ function StatusBadge({ status }: { status: string }) {
     return (
         <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border ${info.bg} ${info.color} ${info.border}`}>
             <info.icon className="h-2.5 w-2.5" />
+            {info.label}
+        </span>
+    );
+}
+
+const SITE_STATUSES = [
+    { key: "none", label: "None", color: "", bg: "", border: "", icon: null },
+    { key: "demo", label: "Demo Site", color: "text-orange-400", bg: "bg-orange-500/10", border: "border-orange-500/30", icon: Hammer },
+    { key: "full", label: "Full Site", color: "text-cyan-400", bg: "bg-cyan-500/10", border: "border-cyan-500/30", icon: Globe },
+] as const;
+
+function SiteStatusBadge({ status }: { status: string }) {
+    const info = SITE_STATUSES.find(s => s.key === status);
+    if (!info || !info.icon) return null;
+    const Icon = info.icon;
+    return (
+        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border ${info.bg} ${info.color} ${info.border}`}>
+            <Icon className="h-2.5 w-2.5" />
             {info.label}
         </span>
     );
@@ -104,6 +124,7 @@ export default function LeadsPage() {
     const [categoryFilter, setCategoryFilter] = useState("");
     const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
     const [categories, setCategories] = useState<string[]>([]);
+    const [siteStatusFilter, setSiteStatusFilter] = useState("all");
 
     // Sorting
     const [sortBy, setSortBy] = useState("scrapedAt");
@@ -147,26 +168,27 @@ export default function LeadsPage() {
             if (maxReviews) params.append("maxReviews", maxReviews);
             if (minScore) params.append("minScore", minScore);
             if (categoryFilter) params.append("category", categoryFilter);
+            if (siteStatusFilter !== "all") params.append("siteStatus", siteStatusFilter);
             params.append("sortBy", sortBy);
             params.append("sortDir", sortDir);
             params.append("page", page.toString());
             params.append("limit", "50");
 
-            const res = await axios.get(`http://localhost:3001/api/leads?${params.toString()}`);
+            const res = await api.get(`/api/leads?${params.toString()}`);
             setLeads(res.data.data);
             setTotalPages(res.data.pagination.totalPages);
             setTotalLeads(res.data.pagination.total);
         } catch (err) {
-            console.error(err);
+            console.debug("[Leads] fetch failed", err);
         } finally {
             setLoading(false);
         }
-    }, [searchTerm, filterWebsite, minRating, cityFilter, minReviews, maxReviews, minScore, categoryFilter, sortBy, sortDir, page]);
+    }, [searchTerm, filterWebsite, minRating, cityFilter, minReviews, maxReviews, minScore, categoryFilter, siteStatusFilter, sortBy, sortDir, page]);
 
     useEffect(() => { fetchLeads(); }, [fetchLeads]);
 
     useEffect(() => {
-        axios.get("http://localhost:3001/api/leads/categories").then(r => setCategories(r.data)).catch(() => { });
+        apiGet<string[]>("/api/leads/categories").then(data => setCategories(data)).catch(() => { });
     }, []);
 
     // ── Sorting ──────────────────────────────────────────────────────
@@ -207,7 +229,7 @@ export default function LeadsPage() {
         if (!confirm(`Delete ${selectedLeadIds.size} leads?`)) return;
         setBulkActioning(true);
         try {
-            await axios.delete("http://localhost:3001/api/leads/bulk", { data: { ids: Array.from(selectedLeadIds) } });
+            await apiDelete("/api/leads/bulk", { ids: Array.from(selectedLeadIds) });
             setSelectedLeadIds(new Set());
             fetchLeads();
         } catch { alert("Failed to delete leads"); }
@@ -220,7 +242,7 @@ export default function LeadsPage() {
         if (!confirm(`Queue enrichment for ${toEnrich.length} websites?`)) return;
         setBulkActioning(true);
         try {
-            await axios.post("http://localhost:3001/api/enrich/bulk", { websites: toEnrich.map(l => l.website) });
+            await apiPost("/api/enrich/bulk", { websites: toEnrich.map(l => l.website) });
             alert(`Queued ${toEnrich.length} for enrichment.`);
             setSelectedLeadIds(new Set());
         } catch { alert("Failed to enrich"); }
@@ -238,16 +260,27 @@ export default function LeadsPage() {
     const saveEdit = async () => {
         if (!editingCell) return;
         try {
-            const res = await axios.patch(`http://localhost:3001/api/leads/${editingCell.id}`, {
+            const data = await apiPatch(`/api/leads/${editingCell.id}`, {
                 [editingCell.field]: editValue,
             });
-            setLeads(leads.map(l => l.id === editingCell.id ? res.data : l));
-            if (selectedLead?.id === editingCell.id) setSelectedLead(res.data);
+            setLeads(leads.map(l => l.id === editingCell.id ? data : l));
+            if (selectedLead?.id === editingCell.id) setSelectedLead(data);
         } catch { alert("Failed to save edit"); }
         setEditingCell(null);
     };
 
     const cancelEdit = () => setEditingCell(null);
+
+    // ── Site Status Toggle ─────────────────────────────────────────
+
+    const handleSiteStatusToggle = async (leadId: number, currentStatus: string, newStatus: string) => {
+        const toggledStatus = currentStatus === newStatus ? "none" : newStatus;
+        try {
+            await apiPatch(`/api/leads/${leadId}/crm`, { siteStatus: toggledStatus });
+            setLeads(prev => prev.map(l => l.id === leadId ? { ...l, siteStatus: toggledStatus } : l));
+            if (selectedLead?.id === leadId) setSelectedLead(prev => prev ? { ...prev, siteStatus: toggledStatus } : prev);
+        } catch { alert("Failed to update site status"); }
+    };
 
     // ── Single Enrich ────────────────────────────────────────────────
 
@@ -255,9 +288,9 @@ export default function LeadsPage() {
         if (!selectedLead?.website) return;
         setEnriching(true);
         try {
-            const res = await axios.post("http://localhost:3001/api/enrich", { website: selectedLead.website });
-            setLeads(leads.map(l => l.id === res.data.id ? res.data : l));
-            setSelectedLead(res.data);
+            const data = await apiPost("/api/enrich", { website: selectedLead.website });
+            setLeads(leads.map(l => l.id === data.id ? data : l));
+            setSelectedLead(data);
         } catch { alert("Enrichment failed."); }
         finally { setEnriching(false); }
     };
@@ -266,8 +299,8 @@ export default function LeadsPage() {
 
     const fetchAuditLogs = async (leadId: number) => {
         try {
-            const res = await axios.get(`http://localhost:3001/api/leads/${leadId}/logs`);
-            setAuditLogs(res.data);
+            const data = await apiGet(`/api/leads/${leadId}/logs`);
+            setAuditLogs(data);
         } catch { setAuditLogs([]); }
     };
 
@@ -286,7 +319,7 @@ export default function LeadsPage() {
         try {
             const formData = new FormData();
             formData.append("file", file);
-            const res = await axios.post("http://localhost:3001/api/leads/import", formData, {
+            const res = await api.post("/api/leads/import", formData, {
                 headers: { "Content-Type": "multipart/form-data" },
             });
             alert(`Import complete!\n• Imported: ${res.data.imported}\n• Duplicates skipped: ${res.data.duplicatesSkipped}\n• Errors: ${res.data.errors}`);
@@ -300,16 +333,16 @@ export default function LeadsPage() {
     const handleDedup = async () => {
         if (!confirm("Scan for and merge duplicate leads?")) return;
         try {
-            const res = await axios.post("http://localhost:3001/api/leads/deduplicate");
-            alert(res.data.message);
+            const data = await apiPost("/api/leads/deduplicate");
+            alert(data.message);
             fetchLeads();
         } catch { alert("Deduplication failed"); }
     };
 
     const handleRecalcScores = async () => {
         try {
-            const res = await axios.post("http://localhost:3001/api/leads/score", {});
-            alert(res.data.message);
+            const data = await apiPost("/api/leads/score", {});
+            alert(data.message);
             fetchLeads();
         } catch { alert("Score recalculation failed"); }
     };
@@ -343,7 +376,7 @@ export default function LeadsPage() {
     const resetFilters = () => {
         setSearchTerm(""); setFilterWebsite("all"); setMinRating("all");
         setCityFilter(""); setMinReviews(""); setMaxReviews("");
-        setMinScore(""); setCategoryFilter(""); setPage(1);
+        setMinScore(""); setCategoryFilter(""); setSiteStatusFilter("all"); setPage(1);
     };
 
     // ── Score Badge ──────────────────────────────────────────────────
@@ -436,6 +469,14 @@ export default function LeadsPage() {
                         <Filter className="h-3.5 w-3.5" /> Filters
                         {showAdvancedFilters ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
                     </Button>
+                    <div className="h-4 w-px bg-border mx-1 hidden sm:block" />
+                    <select value={siteStatusFilter} onChange={e => { setSiteStatusFilter(e.target.value); setPage(1); }}
+                        className="h-8 rounded-md border border-input bg-transparent px-2 text-xs shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
+                        <option value="all">Any Site Status</option>
+                        <option value="demo">🔨 Demo Site</option>
+                        <option value="full">🌐 Full Site</option>
+                        <option value="none">No Site Built</option>
+                    </select>
                 </div>
             </div>
 
@@ -518,14 +559,15 @@ export default function LeadsPage() {
                             </TableHead>
                             <TableHead className="hidden lg:table-cell">Web</TableHead>
                             <TableHead>CRM Status</TableHead>
+                            <TableHead>Site</TableHead>
                             <TableHead className="text-right">Actions</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {loading ? (
-                            <TableRow><TableCell colSpan={9} className="h-24 text-center">Loading leads...</TableCell></TableRow>
+                            <TableRow><TableCell colSpan={11} className="h-24 text-center">Loading leads...</TableCell></TableRow>
                         ) : leads.length === 0 ? (
-                            <TableRow><TableCell colSpan={9} className="h-24 text-center">No leads found.</TableCell></TableRow>
+                            <TableRow><TableCell colSpan={11} className="h-24 text-center">No leads found.</TableCell></TableRow>
                         ) : (
                             leads.map(lead => (
                                 <TableRow key={lead.id} data-state={selectedLeadIds.has(lead.id) ? "selected" : undefined}>
@@ -577,6 +619,30 @@ export default function LeadsPage() {
                                                     <Phone className="h-2 w-2" /> {lead.callCount} calls
                                                 </span>
                                             )}
+                                        </div>
+                                    </TableCell>
+                                    <TableCell>
+                                        <div className="flex gap-1">
+                                            <button
+                                                onClick={() => handleSiteStatusToggle(lead.id, lead.siteStatus, "demo")}
+                                                title={lead.siteStatus === "demo" ? "Remove Demo Site" : "Mark as Demo Site"}
+                                                className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-medium border transition-all cursor-pointer ${
+                                                    lead.siteStatus === "demo"
+                                                        ? "bg-orange-500/20 text-orange-400 border-orange-500/40 ring-1 ring-orange-400/30"
+                                                        : "border-border/50 text-muted-foreground/50 hover:border-orange-500/30 hover:text-orange-400/70"
+                                                }`}>
+                                                <Hammer className="h-2.5 w-2.5" /> D
+                                            </button>
+                                            <button
+                                                onClick={() => handleSiteStatusToggle(lead.id, lead.siteStatus, "full")}
+                                                title={lead.siteStatus === "full" ? "Remove Full Site" : "Mark as Full Site"}
+                                                className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-medium border transition-all cursor-pointer ${
+                                                    lead.siteStatus === "full"
+                                                        ? "bg-cyan-500/20 text-cyan-400 border-cyan-500/40 ring-1 ring-cyan-400/30"
+                                                        : "border-border/50 text-muted-foreground/50 hover:border-cyan-500/30 hover:text-cyan-400/70"
+                                                }`}>
+                                                <Globe className="h-2.5 w-2.5" /> F
+                                            </button>
                                         </div>
                                     </TableCell>
                                     <TableCell className="text-right">
@@ -658,6 +724,35 @@ export default function LeadsPage() {
                                         <span className="text-right font-medium text-muted-foreground text-sm">CRM Status</span>
                                         <div className="col-span-3">
                                             <StatusBadge status={selectedLead.crmStatus} />
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-4 items-center gap-3">
+                                        <span className="text-right font-medium text-muted-foreground text-sm">Site Status</span>
+                                        <div className="col-span-3 flex items-center gap-2">
+                                            <SiteStatusBadge status={selectedLead.siteStatus} />
+                                            <div className="flex gap-1">
+                                                <button
+                                                    onClick={() => handleSiteStatusToggle(selectedLead.id, selectedLead.siteStatus, "demo")}
+                                                    className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium border transition-all cursor-pointer ${
+                                                        selectedLead.siteStatus === "demo"
+                                                            ? "bg-orange-500/20 text-orange-400 border-orange-500/40"
+                                                            : "border-border text-muted-foreground hover:border-orange-500/30 hover:text-orange-400"
+                                                    }`}>
+                                                    <Hammer className="h-3 w-3" />
+                                                    {selectedLead.siteStatus === "demo" ? "✓ Demo" : "Demo"}
+                                                </button>
+                                                <button
+                                                    onClick={() => handleSiteStatusToggle(selectedLead.id, selectedLead.siteStatus, "full")}
+                                                    className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium border transition-all cursor-pointer ${
+                                                        selectedLead.siteStatus === "full"
+                                                            ? "bg-cyan-500/20 text-cyan-400 border-cyan-500/40"
+                                                            : "border-border text-muted-foreground hover:border-cyan-500/30 hover:text-cyan-400"
+                                                    }`}>
+                                                    <Globe className="h-3 w-3" />
+                                                    {selectedLead.siteStatus === "full" ? "✓ Full" : "Full"}
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import axios from "axios";
+import { apiGet, apiPost, apiPatch } from "@/lib/api";
 import { format, formatDistanceToNow, isToday, isBefore, startOfDay } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ import {
     Calendar, MessageSquare, RefreshCw, Target, Zap, X,
     Users, Trophy, Ban, Activity, ArrowRight, Voicemail,
     ThumbsUp, ThumbsDown, SkipForward, Filter, StickyNote,
+    Globe, Hammer,
 } from "lucide-react";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -40,6 +41,7 @@ interface Lead {
     hasWebsite: boolean;
     estimatedValue: number | null;
     websitePainPoints: string | null;
+    siteStatus: string;
 }
 
 interface CallLog {
@@ -61,6 +63,8 @@ interface CrmStats {
     closed_lost: number;
     totalCalls: number;
     followUpsDueToday: number;
+    demoSites: number;
+    fullSites: number;
 }
 
 // ── Constants ──────────────────────────────────────────────────────────────────
@@ -85,7 +89,7 @@ const CALL_OUTCOMES: { key: string; label: string; icon: React.ElementType; colo
     { key: "left_message", label: "Left Message", icon: MessageSquare, color: "text-sky-400", suggestedStatus: "attempting" },
 ];
 
-const API = "http://localhost:3001/api";
+const API = "/api";
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -114,6 +118,23 @@ function StatusBadge({ status }: { status: string }) {
     );
 }
 
+const SITE_STATUS_INFO: Record<string, { label: string; icon: React.ElementType; color: string; bg: string; border: string }> = {
+    demo: { label: "Demo Site", icon: Hammer, color: "text-orange-400", bg: "bg-orange-500/10", border: "border-orange-500/30" },
+    full: { label: "Full Site", icon: Globe, color: "text-cyan-400", bg: "bg-cyan-500/10", border: "border-cyan-500/30" },
+};
+
+function SiteStatusBadge({ status }: { status: string }) {
+    const info = SITE_STATUS_INFO[status];
+    if (!info) return null;
+    const Icon = info.icon;
+    return (
+        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border ${info.bg} ${info.color} ${info.border}`}>
+            <Icon className="h-3 w-3" />
+            {info.label}
+        </span>
+    );
+}
+
 // ── Main Component ─────────────────────────────────────────────────────────────
 
 export default function CRMPage() {
@@ -122,6 +143,7 @@ export default function CRMPage() {
     const [queueIdx, setQueueIdx] = useState(0);
     const [loading, setLoading] = useState(true);
     const [queueFilter, setQueueFilter] = useState("all");
+    const [siteStatusFilter, setSiteStatusFilter] = useState("all");
     const [minScore, setMinScore] = useState("0");
     const [callLogs, setCallLogs] = useState<CallLog[]>([]);
     const [showCallModal, setShowCallModal] = useState(false);
@@ -144,8 +166,8 @@ export default function CRMPage() {
 
     const fetchStats = useCallback(async () => {
         try {
-            const r = await axios.get(`${API}/crm/stats`);
-            setStats(r.data);
+            const data = await apiGet(`${API}/crm/stats`);
+            setStats(data);
         } catch { /* ignore */ }
     }, []);
 
@@ -153,17 +175,18 @@ export default function CRMPage() {
         setLoading(true);
         try {
             const params = new URLSearchParams({ status: queueFilter, minScore, limit: "100" });
-            const r = await axios.get(`${API}/crm/queue?${params}`);
-            setQueue(r.data);
+            if (siteStatusFilter !== "all") params.set("siteStatus", siteStatusFilter);
+            const data = await apiGet(`${API}/crm/queue?${params}`);
+            setQueue(data);
             setQueueIdx(0);
         } catch { /* ignore */ }
         finally { setLoading(false); }
-    }, [queueFilter, minScore]);
+    }, [queueFilter, minScore, siteStatusFilter]);
 
     const fetchCallLogs = useCallback(async (leadId: number) => {
         try {
-            const r = await axios.get(`${API}/leads/${leadId}/calls`);
-            setCallLogs(r.data);
+            const data = await apiGet(`${API}/leads/${leadId}/calls`);
+            setCallLogs(data);
         } catch { setCallLogs([]); }
     }, []);
 
@@ -181,8 +204,8 @@ export default function CRMPage() {
 
     const updateCrmStatus = async (leadId: number, crmStatus: string, extra?: object) => {
         try {
-            const updated = await axios.patch(`${API}/leads/${leadId}/crm`, { crmStatus, ...extra });
-            setQueue(q => q.map(l => l.id === leadId ? { ...l, ...updated.data } : l));
+            const updated = await apiPatch(`${API}/leads/${leadId}/crm`, { crmStatus, ...extra });
+            setQueue(q => q.map(l => l.id === leadId ? { ...l, ...updated } : l));
             fetchStats();
         } catch { alert("Failed to update status"); }
     };
@@ -190,7 +213,7 @@ export default function CRMPage() {
     const saveQualNotes = async () => {
         if (!currentLead) return;
         try {
-            await axios.patch(`${API}/leads/${currentLead.id}/crm`, { qualificationNotes: qualNotes });
+            await apiPatch(`${API}/leads/${currentLead.id}/crm`, { qualificationNotes: qualNotes });
             setQueue(q => q.map(l => l.id === currentLead.id ? { ...l, qualificationNotes: qualNotes } : l));
         } catch { /* silent */ }
     };
@@ -217,7 +240,7 @@ export default function CRMPage() {
         if (!currentLead || !callOutcome) return;
         setSavingCall(true);
         try {
-            await axios.post(`${API}/leads/${currentLead.id}/calls`, {
+            await apiPost(`${API}/leads/${currentLead.id}/calls`, {
                 type: activityType,
                 outcome: callOutcome,
                 notes: callNotes || null,
@@ -233,7 +256,7 @@ export default function CRMPage() {
             }
 
             if (Object.keys(patchData).length > 0) {
-                await axios.patch(`${API}/leads/${currentLead.id}/crm`, patchData);
+                await apiPatch(`${API}/leads/${currentLead.id}/crm`, patchData);
             }
 
             // Refresh current lead in queue
@@ -257,6 +280,16 @@ export default function CRMPage() {
 
     const handleSkip = () => setQueueIdx(i => Math.min(i + 1, queue.length - 1));
     const handlePrev = () => setQueueIdx(i => Math.max(i - 1, 0));
+
+    const handleSiteStatusToggle = async (newStatus: string) => {
+        if (!currentLead) return;
+        const toggledStatus = currentLead.siteStatus === newStatus ? "none" : newStatus;
+        try {
+            const updated = await apiPatch(`${API}/leads/${currentLead.id}/crm`, { siteStatus: toggledStatus });
+            setQueue(q => q.map(l => l.id === currentLead.id ? { ...l, siteStatus: toggledStatus } : l));
+            fetchStats();
+        } catch { alert("Failed to update site status"); }
+    };
 
     const handleQuickStatus = async (status: string) => {
         if (!currentLead) return;
@@ -307,6 +340,38 @@ export default function CRMPage() {
                     <span className="text-xl font-bold text-primary">{stats?.totalCalls ?? "—"}</span>
                     <span className="text-[10px] text-muted-foreground font-medium">Total Calls</span>
                 </div>
+            </div>
+
+            {/* ── Site Status Stats ────────────────────────────────────────── */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                <button
+                    onClick={() => setSiteStatusFilter(siteStatusFilter === "demo" ? "all" : "demo")}
+                    className={`flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer hover:scale-[1.02] active:scale-95 bg-orange-500/10 border-orange-500/30 ${siteStatusFilter === "demo" ? "ring-2 ring-orange-400/60 scale-[1.02]" : ""}`}
+                >
+                    <Hammer className="h-5 w-5 text-orange-400" />
+                    <div className="text-left">
+                        <span className="text-xl font-bold text-orange-400">{stats?.demoSites ?? 0}</span>
+                        <p className="text-[10px] text-muted-foreground font-medium">Demo Sites Built</p>
+                    </div>
+                </button>
+                <button
+                    onClick={() => setSiteStatusFilter(siteStatusFilter === "full" ? "all" : "full")}
+                    className={`flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer hover:scale-[1.02] active:scale-95 bg-cyan-500/10 border-cyan-500/30 ${siteStatusFilter === "full" ? "ring-2 ring-cyan-400/60 scale-[1.02]" : ""}`}
+                >
+                    <Globe className="h-5 w-5 text-cyan-400" />
+                    <div className="text-left">
+                        <span className="text-xl font-bold text-cyan-400">{stats?.fullSites ?? 0}</span>
+                        <p className="text-[10px] text-muted-foreground font-medium">Full Sites Built</p>
+                    </div>
+                </button>
+                {siteStatusFilter !== "all" && (
+                    <button
+                        onClick={() => setSiteStatusFilter("all")}
+                        className="flex items-center gap-2 p-3 rounded-xl border border-border/50 text-muted-foreground hover:bg-muted/50 transition-all text-xs font-medium"
+                    >
+                        <X className="h-4 w-4" /> Clear Site Filter
+                    </button>
+                )}
             </div>
 
             {/* Follow-ups Due Banner */}
@@ -378,7 +443,10 @@ export default function CRMPage() {
                         <div className="rounded-2xl border bg-card overflow-hidden">
                             {/* Status bar */}
                             <div className={`px-5 py-2 border-b ${getStatusInfo(currentLead.crmStatus).bg} ${getStatusInfo(currentLead.crmStatus).border} flex items-center justify-between`}>
-                                <StatusBadge status={currentLead.crmStatus} />
+                                <div className="flex items-center gap-2">
+                                    <StatusBadge status={currentLead.crmStatus} />
+                                    <SiteStatusBadge status={currentLead.siteStatus} />
+                                </div>
                                 <div className="flex items-center gap-3 text-xs text-muted-foreground">
                                     {currentLead.callCount > 0 && (
                                         <span className="flex items-center gap-1">
@@ -491,6 +559,33 @@ export default function CRMPage() {
                                             <span className="ml-1 rounded-full bg-primary/20 text-primary text-[10px] w-4 h-4 flex items-center justify-center font-bold">{callLogs.length}</span>
                                         )}
                                     </Button>
+                                </div>
+
+                                {/* Site Status Toggle */}
+                                <div className="border-t pt-3 space-y-2">
+                                    <p className="text-xs font-medium text-muted-foreground flex items-center gap-1"><Globe className="h-3 w-3" /> Site Status</p>
+                                    <div className="flex gap-2">
+                                        <Button size="sm" variant="outline"
+                                            className={`h-8 text-xs gap-1.5 flex-1 transition-all ${
+                                                currentLead.siteStatus === "demo"
+                                                    ? "bg-orange-500/20 border-orange-500/50 text-orange-400 ring-1 ring-orange-400/30"
+                                                    : "border-orange-500/30 text-orange-400/70 hover:bg-orange-500/10"
+                                            }`}
+                                            onClick={() => handleSiteStatusToggle("demo")}>
+                                            <Hammer className="h-3.5 w-3.5" />
+                                            {currentLead.siteStatus === "demo" ? "✓ Demo Site" : "Demo Site"}
+                                        </Button>
+                                        <Button size="sm" variant="outline"
+                                            className={`h-8 text-xs gap-1.5 flex-1 transition-all ${
+                                                currentLead.siteStatus === "full"
+                                                    ? "bg-cyan-500/20 border-cyan-500/50 text-cyan-400 ring-1 ring-cyan-400/30"
+                                                    : "border-cyan-500/30 text-cyan-400/70 hover:bg-cyan-500/10"
+                                            }`}
+                                            onClick={() => handleSiteStatusToggle("full")}>
+                                            <Globe className="h-3.5 w-3.5" />
+                                            {currentLead.siteStatus === "full" ? "✓ Full Site" : "Full Site"}
+                                        </Button>
+                                    </div>
                                 </div>
 
                                 {/* Quick Status Buttons */}
@@ -650,6 +745,7 @@ export default function CRMPage() {
                                     className={`w-full text-left px-3 py-2 rounded-lg text-xs transition-colors flex items-center gap-2 ${idx === queueIdx ? "bg-primary/10 border border-primary/30" : "hover:bg-muted/50"}`}>
                                     <span className="text-muted-foreground font-mono w-5 shrink-0">{idx + 1}</span>
                                     <span className="flex-1 truncate font-medium">{lead.name}</span>
+                                    <SiteStatusBadge status={lead.siteStatus} />
                                     <StatusBadge status={lead.crmStatus} />
                                 </button>
                             ))}

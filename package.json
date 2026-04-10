@@ -7,8 +7,8 @@
     "setup": "node scripts/setup.js",
     "reset": "node scripts/reset-db.js",
     "dev:frontend": "cd frontend && npm run dev",
-    "dev:api": "node --watch server.js",
-    "dev:worker": "node --watch src/worker.js",
+    "dev:api": "node --watch --watch-path=server.js --watch-path=src server.js",
+    "dev:worker": "node --watch --watch-path=src src/worker.js",
     "dev": "concurrently \"npm run dev:api\" \"npm run dev:worker\" \"npm run dev:frontend\"",
     "postinstall": "npx playwright install chromium"
   },

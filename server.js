@@ -28,6 +28,8 @@ app.get('/api/leads', async (req, res) => {
         if (hasWebsite === 'yes') where.hasWebsite = true;
         else if (hasWebsite === 'no') where.hasWebsite = false;
 
+        if (req.query.siteStatus && req.query.siteStatus !== 'all') where.siteStatus = req.query.siteStatus;
+
         if (query) where.query = { contains: query, mode: 'insensitive' };
         if (category) where.category = { contains: category, mode: 'insensitive' };
         if (city) where.city = { contains: city, mode: 'insensitive' };
@@ -825,7 +827,10 @@ app.get('/api/crm/stats', async (req, res) => {
             }
         });
 
-        res.json({ ...statsMap, totalCalls, followUpsDueToday });
+        const demoSites = await prisma.lead.count({ where: { siteStatus: 'demo' } });
+        const fullSites = await prisma.lead.count({ where: { siteStatus: 'full' } });
+
+        res.json({ ...statsMap, totalCalls, followUpsDueToday, demoSites, fullSites });
     } catch (err) {
         console.error('CRM stats error:', err);
         res.status(500).json({ error: 'Database error' });
@@ -889,7 +894,7 @@ app.get('/api/crm/tasks', async (req, res) => {
  */
 app.get('/api/crm/queue', async (req, res) => {
     try {
-        const { status = 'all', minScore = '0', limit = '50' } = req.query;
+        const { status = 'all', minScore = '0', limit = '50', siteStatus } = req.query;
 
         const where = {
             leadScore: { gte: parseInt(minScore) || 0 },
@@ -900,6 +905,10 @@ app.get('/api/crm/queue', async (req, res) => {
         } else {
             // Default: exclude closed/disqualified
             where.crmStatus = { notIn: ['closed_won', 'closed_lost', 'disqualified'] };
+        }
+
+        if (siteStatus && siteStatus !== 'all') {
+            where.siteStatus = siteStatus;
         }
 
         const leads = await prisma.lead.findMany({
@@ -925,7 +934,7 @@ app.get('/api/crm/queue', async (req, res) => {
 app.patch('/api/leads/:id/crm', async (req, res) => {
     try {
         const leadId = parseInt(req.params.id);
-        const { crmStatus, nextFollowUp, qualificationNotes, estimatedValue, websitePainPoints } = req.body;
+        const { crmStatus, nextFollowUp, qualificationNotes, estimatedValue, websitePainPoints, siteStatus } = req.body;
 
         const existing = await prisma.lead.findUnique({ where: { id: leadId } });
         if (!existing) return res.status(404).json({ error: 'Lead not found' });
@@ -936,6 +945,7 @@ app.patch('/api/leads/:id/crm', async (req, res) => {
         if (qualificationNotes !== undefined) data.qualificationNotes = qualificationNotes;
         if (estimatedValue !== undefined) data.estimatedValue = estimatedValue ? parseFloat(estimatedValue) : null;
         if (websitePainPoints !== undefined) data.websitePainPoints = websitePainPoints;
+        if (siteStatus !== undefined) data.siteStatus = siteStatus;
 
         const updated = await prisma.lead.update({ where: { id: leadId }, data });
 
@@ -948,6 +958,19 @@ app.patch('/api/leads/:id/crm', async (req, res) => {
                     field: 'crmStatus',
                     oldValue: existing.crmStatus,
                     newValue: crmStatus,
+                }
+            });
+        }
+
+        // Log site status change
+        if (siteStatus !== undefined && siteStatus !== existing.siteStatus) {
+            await prisma.leadLog.create({
+                data: {
+                    leadId,
+                    action: 'site_status_changed',
+                    field: 'siteStatus',
+                    oldValue: existing.siteStatus || 'none',
+                    newValue: siteStatus,
                 }
             });
         }
@@ -1023,13 +1046,60 @@ app.get('/api/leads/:id/calls', async (req, res) => {
     }
 });
 
-app.listen(PORT, () => {
-    console.log(`\n  ┌──────────────────────────────────────────────┐`);
-    console.log(`  │                                              │`);
-    console.log(`  │   Google Business Scraper — Dashboard V2     │`);
-    console.log(`  │   (Powered by PostgreSQL)                    │`);
-    console.log(`  │                                              │`);
-    console.log(`  │   http://localhost:${PORT}                      │`);
-    console.log(`  │                                              │`);
-    console.log(`  └──────────────────────────────────────────────┘\n`);
-});
+// ── Startup with readiness checks ─────────────────────────────────────────
+
+async function waitForDependencies(maxRetries = 15, delayMs = 2000) {
+    const chalk = require('chalk');
+
+    // 1. Wait for PostgreSQL
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+            await prisma.$queryRaw`SELECT 1`;
+            console.log(chalk.green(`  ✓ PostgreSQL is ready`));
+            break;
+        } catch (err) {
+            if (attempt === maxRetries) {
+                console.error(chalk.red(`  ✗ PostgreSQL not reachable after ${maxRetries} attempts. Is Docker running?`));
+                console.error(chalk.red(`    Run: docker compose up -d`));
+                process.exit(1);
+            }
+            console.log(chalk.yellow(`  ⏳ Waiting for PostgreSQL... (attempt ${attempt}/${maxRetries})`));
+            await new Promise(r => setTimeout(r, delayMs));
+        }
+    }
+
+    // 2. Wait for Redis
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+            const { connection } = require('./src/queue/scraperQueue');
+            await connection.ping();
+            console.log(chalk.green(`  ✓ Redis is ready`));
+            break;
+        } catch (err) {
+            if (attempt === maxRetries) {
+                console.error(chalk.red(`  ✗ Redis not reachable after ${maxRetries} attempts. Is Docker running?`));
+                console.error(chalk.red(`    Run: docker compose up -d`));
+                process.exit(1);
+            }
+            console.log(chalk.yellow(`  ⏳ Waiting for Redis... (attempt ${attempt}/${maxRetries})`));
+            await new Promise(r => setTimeout(r, delayMs));
+        }
+    }
+}
+
+(async () => {
+    console.log(`\n  Checking dependencies...\n`);
+    await waitForDependencies();
+
+    app.listen(PORT, () => {
+        console.log(`\n  ┌──────────────────────────────────────────────┐`);
+        console.log(`  │                                              │`);
+        console.log(`  │   Google Business Scraper — Dashboard V2     │`);
+        console.log(`  │   (Powered by PostgreSQL)                    │`);
+        console.log(`  │                                              │`);
+        console.log(`  │   http://localhost:${PORT}                      │`);
+        console.log(`  │                                              │`);
+        console.log(`  └──────────────────────────────────────────────┘\n`);
+    });
+})();
+

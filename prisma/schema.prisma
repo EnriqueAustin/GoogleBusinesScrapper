@@ -42,6 +42,7 @@ model Lead {
   qualificationNotes String?
   estimatedValue     Float?
   websitePainPoints  String?
+  siteStatus         String   @default("none")     // none | demo | full
 
   // Relations
   logs          LeadLog[]
@@ -56,6 +57,7 @@ model Lead {
   @@index([city])
   @@index([crmStatus])
   @@index([nextFollowUp])
+  @@index([siteStatus])
 }
 
 model LeadLog {

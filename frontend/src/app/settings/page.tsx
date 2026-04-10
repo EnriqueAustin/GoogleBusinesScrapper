@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import axios from "axios";
+import { apiGet, apiPost } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -22,9 +22,7 @@ export default function SettingsPage() {
     useEffect(() => {
         const fetchSettings = async () => {
             try {
-                const res = await axios.get("http://localhost:3001/api/settings");
-                // Merge database settings over defaults
-                const dbSettings = res.data;
+                const dbSettings = await apiGet("/api/settings");
                 setSettings((prev) => ({
                     ...prev,
                     headless: dbSettings.headless ?? prev.headless,
@@ -34,7 +32,7 @@ export default function SettingsPage() {
                     proxyUrl: dbSettings.proxyUrl ?? prev.proxyUrl,
                 }));
             } catch (err) {
-                console.error("Failed to load settings", err);
+                console.debug("[Settings] Failed to load settings", err);
             } finally {
                 setLoading(false);
             }
@@ -46,7 +44,7 @@ export default function SettingsPage() {
     const handleSave = async () => {
         setSaving(true);
         try {
-            await axios.post("http://localhost:3001/api/settings", settings);
+            await apiPost("/api/settings", settings);
             alert("Settings saved successfully! They will apply to the next scraping job.");
         } catch (err) {
             console.error("Failed to save settings", err);

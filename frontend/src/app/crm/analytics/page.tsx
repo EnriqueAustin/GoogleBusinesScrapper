@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import axios from "axios";
+import { apiGet } from "@/lib/api";
 import { format, formatDistanceToNow, isToday, isBefore, startOfDay } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -50,7 +50,7 @@ export default function CRMAnalyticsPage() {
     const fetchData = useCallback(async () => {
         setLoading(true);
         try {
-            const { data } = await axios.get("http://localhost:3001/api/crm/analytics");
+            const data = await apiGet<{pipelineValue: PipelineData[], activities: ActivityData[]}>("/api/crm/analytics");
             setPipeline(data.pipelineValue);
             setActivities(data.activities);
         } catch (e) {
