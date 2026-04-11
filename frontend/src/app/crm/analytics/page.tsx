@@ -113,7 +113,7 @@ export default function CRMAnalyticsPage() {
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-3xl font-bold">${totalPipelineValue.toLocaleString()}</div>
+                        <div className="text-3xl font-bold">R{totalPipelineValue.toLocaleString()}</div>
                         <p className="text-xs text-muted-foreground mt-1">Across all active stages</p>
                     </CardContent>
                 </Card>
@@ -124,7 +124,7 @@ export default function CRMAnalyticsPage() {
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-3xl font-bold text-emerald-500">${totalQualifiedValue.toLocaleString()}</div>
+                        <div className="text-3xl font-bold text-emerald-500">R{totalQualifiedValue.toLocaleString()}</div>
                         <p className="text-xs text-muted-foreground mt-1">Ready to close</p>
                     </CardContent>
                 </Card>
@@ -153,10 +153,10 @@ export default function CRMAnalyticsPage() {
                             <ReBarChart data={formattedPipeline} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#333" />
                                 <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-                                <YAxis tickFormatter={(val) => `$${val}`} width={80} />
+                                <YAxis tickFormatter={(val) => `R${val}`} width={80} />
                                 <Tooltip
                                     cursor={{ fill: 'rgba(255, 255, 255, 0.05)' }}
-                                    formatter={(value: number) => [`$${value.toLocaleString()}`, 'Pipeline Value']}
+                                    formatter={(value: number) => [`R${value.toLocaleString()}`, 'Pipeline Value']}
                                     contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '8px' }}
                                 />
                                 <Bar dataKey="value" radius={[4, 4, 0, 0]}>

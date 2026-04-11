@@ -819,7 +819,7 @@ app.get('/api/crm/stats', async (req, res) => {
             }
         }
 
-        const totalCalls = await prisma.callLog.count();
+        const totalCalls = await prisma.callLog.count({ where: { type: 'call' } });
         const followUpsDueToday = await prisma.lead.count({
             where: {
                 nextFollowUp: { lte: new Date(new Date().setHours(23, 59, 59, 999)) },
@@ -1003,7 +1003,7 @@ app.post('/api/leads/:id/calls', async (req, res) => {
         // Update lead: increment activity count, set lastCalledAt, optionally update crmStatus
         const updateData = {
             callCount: { increment: type === 'call' ? 1 : 0 },
-            lastCalledAt: new Date(),
+            ...(type === 'call' ? { lastCalledAt: new Date() } : {}),
         };
         if (crmStatus) updateData.crmStatus = crmStatus;
 
