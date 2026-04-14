@@ -10,6 +10,14 @@ app.use(express.json());
 app.use(cors());
 const PORT = config.dashboard.port;
 
+function parseNullableMoney(value) {
+    if (value === undefined) return undefined;
+    if (value === null || value === '') return null;
+
+    const parsed = parseFloat(value);
+    return Number.isFinite(parsed) ? parsed : null;
+}
+
 /**
  * GET /api/leads — return paginated leads with sorting and advanced filters
  */
@@ -326,6 +334,20 @@ app.post('/api/leads/import', upload.single('file'), async (req, res) => {
     } catch (err) {
         console.error('CSV import failed:', err);
         res.status(500).json({ error: 'Failed to import CSV' });
+    }
+});
+
+/**
+ * GET /api/leads/export — download the generated CSV file
+ */
+app.get('/api/leads/export', (req, res) => {
+    const fs = require('fs');
+    const path = require('path');
+    const csvPath = path.join(__dirname, 'output', 'leads.csv');
+    if (fs.existsSync(csvPath)) {
+        res.download(csvPath, 'leads_export.csv');
+    } else {
+        res.status(404).json({ error: 'Export file not found. Wait for a job to complete or update a lead.' });
     }
 });
 
@@ -934,7 +956,16 @@ app.get('/api/crm/queue', async (req, res) => {
 app.patch('/api/leads/:id/crm', async (req, res) => {
     try {
         const leadId = parseInt(req.params.id);
-        const { crmStatus, nextFollowUp, qualificationNotes, estimatedValue, websitePainPoints, siteStatus } = req.body;
+        const {
+            crmStatus,
+            nextFollowUp,
+            qualificationNotes,
+            estimatedValue,
+            setupFee,
+            monthlyFee,
+            websitePainPoints,
+            siteStatus
+        } = req.body;
 
         const existing = await prisma.lead.findUnique({ where: { id: leadId } });
         if (!existing) return res.status(404).json({ error: 'Lead not found' });
@@ -943,9 +974,31 @@ app.patch('/api/leads/:id/crm', async (req, res) => {
         if (crmStatus !== undefined) data.crmStatus = crmStatus;
         if (nextFollowUp !== undefined) data.nextFollowUp = nextFollowUp ? new Date(nextFollowUp) : null;
         if (qualificationNotes !== undefined) data.qualificationNotes = qualificationNotes;
-        if (estimatedValue !== undefined) data.estimatedValue = estimatedValue ? parseFloat(estimatedValue) : null;
         if (websitePainPoints !== undefined) data.websitePainPoints = websitePainPoints;
         if (siteStatus !== undefined) data.siteStatus = siteStatus;
+
+        const parsedSetupFee = parseNullableMoney(setupFee);
+        const parsedMonthlyFee = parseNullableMoney(monthlyFee);
+        const parsedEstimatedValue = parseNullableMoney(estimatedValue);
+
+        const setupFeeProvided = parsedSetupFee !== undefined;
+        const monthlyFeeProvided = parsedMonthlyFee !== undefined;
+
+        if (setupFeeProvided) data.setupFee = parsedSetupFee;
+        if (monthlyFeeProvided) data.monthlyFee = parsedMonthlyFee;
+
+        if (setupFeeProvided || monthlyFeeProvided || parsedEstimatedValue !== undefined) {
+            const effectiveSetupFee = setupFeeProvided ? parsedSetupFee : existing.setupFee;
+            const effectiveMonthlyFee = monthlyFeeProvided ? parsedMonthlyFee : existing.monthlyFee;
+            
+            if (parsedEstimatedValue !== undefined && parsedEstimatedValue !== null) {
+                data.estimatedValue = parsedEstimatedValue;
+            } else if (effectiveSetupFee != null || effectiveMonthlyFee != null) {
+                data.estimatedValue = (effectiveSetupFee || 0) + ((effectiveMonthlyFee || 0) * 12);
+            } else {
+                data.estimatedValue = null;
+            }
+        }
 
         const updated = await prisma.lead.update({ where: { id: leadId }, data });
 

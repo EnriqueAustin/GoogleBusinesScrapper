@@ -348,27 +348,8 @@ export default function LeadsPage() {
     };
 
     // ── CSV Export ────────────────────────────────────────────────────
-
     const handleExportCsv = () => {
-        if (leads.length === 0) return;
-        const headers = ['Name', 'Category', 'City', 'Address', 'Phone', 'Website', 'Has Website', 'Rating', 'Reviews', 'Lead Score', 'Notes', 'Tags', 'Website Status', 'Tech Stack', 'SEO Status', 'Emails', 'Social Links', 'Query', 'Scraped At'];
-        const rows = leads.map(l => [
-            l.name, l.category, l.city, l.address, l.phone, l.website,
-            l.hasWebsite ? 'Yes' : 'No', l.rating, l.reviewCount, l.leadScore,
-            l.notes || '', l.tags || '',
-            l.websiteStatus || '', l.techStack || '', l.seoStatus || '', l.emails || '', l.socials || '',
-            l.query, l.scrapedAt
-        ]);
-        const csvContent = [headers, ...rows]
-            .map(row => row.map(cell => `"${String(cell || '').replace(/"/g, '""')}"`).join(','))
-            .join('\n');
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `leads_export_${format(new Date(), "yyyy-MM-dd")}.csv`;
-        link.click();
-        URL.revokeObjectURL(url);
+        window.open('/api/leads/export', '_blank');
     };
 
     // ── Reset Filters ────────────────────────────────────────────────

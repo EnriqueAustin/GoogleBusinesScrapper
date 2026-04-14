@@ -5,6 +5,13 @@ import { apiGet, apiPost, apiPatch } from "@/lib/api";
 import { format, formatDistanceToNow, isToday, isBefore, startOfDay } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+"use client";
+
+import { useEffect, useState, useCallback } from "react";
+import { apiGet, apiPost, apiPatch } from "@/lib/api";
+import { format, formatDistanceToNow, isToday, isBefore, startOfDay } from "date-fns";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -15,7 +22,7 @@ import {
     Calendar, MessageSquare, RefreshCw, Target, Zap, X,
     Users, Trophy, Ban, Activity, ArrowRight, Voicemail,
     ThumbsUp, ThumbsDown, SkipForward, Filter, StickyNote,
-    Globe, Hammer,
+    Globe, Hammer, Download
 } from "lucide-react";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -40,6 +47,8 @@ interface Lead {
     notes: string | null;
     hasWebsite: boolean;
     estimatedValue: number | null;
+    setupFee: number | null;
+    monthlyFee: number | null;
     websitePainPoints: string | null;
     siteStatus: string;
 }
@@ -135,6 +144,12 @@ function SiteStatusBadge({ status }: { status: string }) {
     );
 }
 
+function parseCurrencyInput(value: string): number | null {
+    if (!value.trim()) return null;
+    const parsed = parseFloat(value);
+    return Number.isFinite(parsed) ? parsed : null;
+}
+
 // ── Main Component ─────────────────────────────────────────────────────────────
 
 export default function CRMPage() {
@@ -158,7 +173,9 @@ export default function CRMPage() {
     const [qualNotes, setQualNotes] = useState("");
     const [overrideStatus, setOverrideStatus] = useState("");
     const [activityType, setActivityType] = useState("call");
-    const [estimatedValue, setEstimatedValue] = useState("");
+    const [setupFee, setSetupFee] = useState("");
+    const [monthlyFee, setMonthlyFee] = useState("");
+    const [manualValue, setManualValue] = useState("");
 
     const currentLead = queue[queueIdx] ?? null;
 
@@ -225,39 +242,54 @@ export default function CRMPage() {
         setCallDuration("");
         setFollowUpDate("");
         setActivityType("call");
-        setEstimatedValue(currentLead?.estimatedValue ? currentLead.estimatedValue.toString() : "");
+        setSetupFee(currentLead?.setupFee != null ? currentLead.setupFee.toString() : "");
+        setMonthlyFee(currentLead?.monthlyFee != null ? currentLead.monthlyFee.toString() : "");
+        setManualValue(currentLead?.estimatedValue != null ? currentLead.estimatedValue.toString() : "");
         setOverrideStatus(currentLead?.crmStatus || "attempting");
         setShowCallModal(true);
     };
 
     const handleOutcomeSelect = (key: string) => {
         setCallOutcome(key);
-        const info = getOutcomeInfo(key);
-        if (info?.suggestedStatus) setOverrideStatus(info.suggestedStatus);
+        const outcome = CALL_OUTCOMES.find(o => o.key === key);
+        if (outcome?.suggestedStatus) setOverrideStatus(outcome.suggestedStatus);
     };
 
     const submitCall = async () => {
-        if (!currentLead || !callOutcome) return;
+        if (!currentLead) return;
         setSavingCall(true);
         try {
-            await apiPost(`${API}/leads/${currentLead.id}/calls`, {
-                type: activityType,
-                outcome: callOutcome,
-                notes: callNotes || null,
-                duration: callDuration ? parseInt(callDuration) * 60 : null,
+            const patchData: any = {
                 crmStatus: overrideStatus,
-            });
+                qualificationNotes: qualNotes,
+                nextFollowUp: followUpDate || null,
+            };
 
-            const patchData: any = {};
-            if (followUpDate) patchData.nextFollowUp = followUpDate;
-            if (qualNotes !== currentLead.qualificationNotes) patchData.qualificationNotes = qualNotes;
-            if (estimatedValue !== (currentLead.estimatedValue?.toString() || "")) {
-                patchData.estimatedValue = estimatedValue ? parseFloat(estimatedValue) : null;
+            if (setupFee !== (currentLead.setupFee?.toString() || "")) {
+                patchData.setupFee = parseCurrencyInput(setupFee);
+            }
+
+            if (monthlyFee !== (currentLead.monthlyFee?.toString() || "")) {
+                patchData.monthlyFee = parseCurrencyInput(monthlyFee);
+            }
+
+            if (manualValue !== (currentLead.estimatedValue?.toString() || "") && manualValue.trim() !== "") {
+                patchData.estimatedValue = parseCurrencyInput(manualValue);
             }
 
             if (Object.keys(patchData).length > 0) {
                 await apiPatch(`${API}/leads/${currentLead.id}/crm`, patchData);
             }
+
+            const nextSetupFee = patchData.setupFee !== undefined ? patchData.setupFee : currentLead.setupFee;
+            const nextMonthlyFee = patchData.monthlyFee !== undefined ? patchData.monthlyFee : currentLead.monthlyFee;
+            const nextEstimatedValue = patchData.estimatedValue !== undefined
+                ? patchData.estimatedValue 
+                : patchData.setupFee !== undefined || patchData.monthlyFee !== undefined
+                    ? (nextSetupFee == null && nextMonthlyFee == null
+                        ? null
+                        : (nextSetupFee || 0) + ((nextMonthlyFee || 0) * 12))
+                    : currentLead.estimatedValue;
 
             // Refresh current lead in queue
             setQueue(q => q.map(l => l.id === currentLead.id ? {
@@ -267,7 +299,9 @@ export default function CRMPage() {
                 lastCalledAt: new Date().toISOString(),
                 nextFollowUp: patchData.nextFollowUp || l.nextFollowUp,
                 qualificationNotes: patchData.qualificationNotes || l.qualificationNotes,
-                estimatedValue: patchData.estimatedValue !== undefined ? patchData.estimatedValue : l.estimatedValue,
+                setupFee: patchData.setupFee !== undefined ? patchData.setupFee : l.setupFee,
+                monthlyFee: patchData.monthlyFee !== undefined ? patchData.monthlyFee : l.monthlyFee,
+                estimatedValue: nextEstimatedValue,
             } : l));
             fetchCallLogs(currentLead.id);
             fetchStats();
@@ -281,32 +315,14 @@ export default function CRMPage() {
     const handleSkip = () => setQueueIdx(i => Math.min(i + 1, queue.length - 1));
     const handlePrev = () => setQueueIdx(i => Math.max(i - 1, 0));
 
-    const handleSiteStatusToggle = async (newStatus: string) => {
-        if (!currentLead) return;
-        const toggledStatus = currentLead.siteStatus === newStatus ? "none" : newStatus;
-        try {
-            const updated = await apiPatch(`${API}/leads/${currentLead.id}/crm`, { siteStatus: toggledStatus });
-            setQueue(q => q.map(l => l.id === currentLead.id ? { ...l, siteStatus: toggledStatus } : l));
-            fetchStats();
-        } catch { alert("Failed to update site status"); }
-    };
-
-    const handleQuickStatus = async (status: string) => {
-        if (!currentLead) return;
-        await updateCrmStatus(currentLead.id, status);
-        if (status === "disqualified" || status === "closed_won" || status === "closed_lost") {
-            setQueueIdx(i => Math.min(i + 1, queue.length - 1));
-        }
-    };
-
-    // ── Render ────────────────────────────────────────────────────────────────
-
-    const totalActive = stats ? (stats.new + stats.attempting + stats.connected + stats.qualified) : 0;
-
-    return (
-        <div className="space-y-6">
-
-            {/* Header */}
+    const liveSetupFee = parseCurrencyInput(setupFee);
+    const liveMonthlyFee = parseCurrencyInput(monthlyFee);
+    const liveManualValue = parseCurrencyInput(manualValue);
+    const liveEstimatedValue = liveManualValue !== null 
+        ? liveManualValue 
+        : (liveSetupFee == null && liveMonthlyFee == null
+            ? null
+            : (liveSetupFee || 0) + ((liveMonthlyFee || 0) * 12));
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
@@ -841,12 +857,49 @@ export default function CRMPage() {
 
                         {/* Deal Revenue */}
                         {(overrideStatus === "qualified" || overrideStatus === "connected" || overrideStatus === "closed_won") && (
-                            <div className="space-y-1.5">
+                            <div className="space-y-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-3">
                                 <label className="text-xs font-medium text-emerald-500 font-bold flex items-center gap-1">
-                                    <Target className="h-3 w-3" /> Estimated Deal Value ($)
+                                    <Target className="h-3 w-3" /> Revenue Model
                                 </label>
-                                <Input type="number" value={estimatedValue} onChange={e => setEstimatedValue(e.target.value)}
-                                    placeholder="e.g. 2500" className="h-8 text-sm border-emerald-500/30 bg-emerald-500/5 focus-visible:ring-emerald-500" />
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div className="space-y-1.5">
+                                        <label className="text-xs font-medium text-muted-foreground">Setup Fee (R)</label>
+                                        <Input
+                                            type="number"
+                                            value={setupFee}
+                                            onChange={e => { setSetupFee(e.target.value); setManualValue(""); }}
+                                            placeholder="e.g. 2500"
+                                            className="h-8 text-sm border-emerald-500/30 bg-background/70 focus-visible:ring-emerald-500"
+                                        />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <label className="text-xs font-medium text-muted-foreground">Monthly Fee (R)</label>
+                                        <Input
+                                            type="number"
+                                            value={monthlyFee}
+                                            onChange={e => { setMonthlyFee(e.target.value); setManualValue(""); }}
+                                            placeholder="e.g. 499"
+                                            className="h-8 text-sm border-emerald-500/30 bg-background/70 focus-visible:ring-emerald-500"
+                                        />
+                                    </div>
+                                    <div className="space-y-1.5 col-span-2">
+                                        <label className="text-xs font-medium text-muted-foreground">Or One Big Price / Total (R)</label>
+                                        <Input
+                                            type="number"
+                                            value={manualValue}
+                                            onChange={e => { setManualValue(e.target.value); setSetupFee(""); setMonthlyFee(""); }}
+                                            placeholder="e.g. 15000"
+                                            className="h-8 text-sm border-emerald-500/30 bg-background/70 focus-visible:ring-emerald-500"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="rounded-lg border border-emerald-500/20 bg-background/60 px-3 py-2">
+                                    <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Estimated Total Value</p>
+                                    <p className="text-sm font-semibold text-emerald-500">
+                                        {liveEstimatedValue == null ? "Not set" : `R${liveEstimatedValue.toLocaleString()}`}
+                                    </p>
+                                    <p className="text-[11px] text-muted-foreground">Calculated as setup fee + 12 months of recurring revenue.</p>
+                                </div>
                             </div>
                         )}
 

@@ -42,6 +42,11 @@ const ACTIVITY_COLORS: Record<string, string> = {
     meeting: "#10b981",
 };
 
+function formatCurrencyTooltip(value: number | string | undefined, label: string) {
+    const numericValue = typeof value === "number" ? value : Number(value || 0);
+    return [`R${numericValue.toLocaleString()}`, label];
+}
+
 export default function CRMAnalyticsPage() {
     const [pipeline, setPipeline] = useState<PipelineData[]>([]);
     const [activities, setActivities] = useState<ActivityData[]>([]);
@@ -92,7 +97,7 @@ export default function CRMAnalyticsPage() {
                         <BarChart className="h-7 w-7 text-primary" />
                         Sales Analytics
                     </h1>
-                    <p className="text-muted-foreground text-sm mt-1">Pipeline revenue metrics and team activity.</p>
+                    <p className="text-muted-foreground text-sm mt-1">Pipeline revenue metrics and team activity, using setup fees plus 12 months of recurring revenue.</p>
                 </div>
                 <div className="flex gap-2">
                     <Button variant="outline" asChild size="sm">
@@ -114,7 +119,7 @@ export default function CRMAnalyticsPage() {
                     </CardHeader>
                     <CardContent>
                         <div className="text-3xl font-bold">R{totalPipelineValue.toLocaleString()}</div>
-                        <p className="text-xs text-muted-foreground mt-1">Across all active stages</p>
+                        <p className="text-xs text-muted-foreground mt-1">Setup fee + 12 months across all active stages</p>
                     </CardContent>
                 </Card>
                 <Card>
@@ -125,7 +130,7 @@ export default function CRMAnalyticsPage() {
                     </CardHeader>
                     <CardContent>
                         <div className="text-3xl font-bold text-emerald-500">R{totalQualifiedValue.toLocaleString()}</div>
-                        <p className="text-xs text-muted-foreground mt-1">Ready to close</p>
+                        <p className="text-xs text-muted-foreground mt-1">Qualified deals using the same 12-month estimate</p>
                     </CardContent>
                 </Card>
                 <Card>
@@ -146,7 +151,7 @@ export default function CRMAnalyticsPage() {
                 <Card className="col-span-1">
                     <CardHeader>
                         <CardTitle>Revenue by Stage</CardTitle>
-                        <CardDescription>Estimated deal value aggregated by CRM lifecycle stage</CardDescription>
+                        <CardDescription>Setup fees plus 12 months of recurring value aggregated by CRM lifecycle stage</CardDescription>
                     </CardHeader>
                     <CardContent className="h-[300px]">
                         <ResponsiveContainer width="100%" height="100%">
@@ -156,7 +161,7 @@ export default function CRMAnalyticsPage() {
                                 <YAxis tickFormatter={(val) => `R${val}`} width={80} />
                                 <Tooltip
                                     cursor={{ fill: 'rgba(255, 255, 255, 0.05)' }}
-                                    formatter={(value: number) => [`R${value.toLocaleString()}`, 'Pipeline Value']}
+                                    formatter={(value) => formatCurrencyTooltip(value, 'Pipeline Value')}
                                     contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '8px' }}
                                 />
                                 <Bar dataKey="value" radius={[4, 4, 0, 0]}>

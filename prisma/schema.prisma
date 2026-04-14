@@ -41,6 +41,8 @@ model Lead {
   nextFollowUp       DateTime?
   qualificationNotes String?
   estimatedValue     Float?
+  setupFee           Float?
+  monthlyFee         Float?
   websitePainPoints  String?
   siteStatus         String   @default("none")     // none | demo | full
 

@@ -1,0 +1,4 @@
+-- AlterTable
+ALTER TABLE "Lead"
+ADD COLUMN     "setupFee" DOUBLE PRECISION,
+ADD COLUMN     "monthlyFee" DOUBLE PRECISION;
