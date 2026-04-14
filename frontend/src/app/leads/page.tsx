@@ -142,6 +142,7 @@ export default function LeadsPage() {
     // Detail Modal
     const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
     const [enriching, setEnriching] = useState(false);
+    const [generatingDemo, setGeneratingDemo] = useState(false);
     const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
     const [showHistory, setShowHistory] = useState(false);
 
@@ -293,6 +294,29 @@ export default function LeadsPage() {
             setSelectedLead(data);
         } catch { alert("Enrichment failed."); }
         finally { setEnriching(false); }
+    };
+
+    // ── Generate Demo ────────────────────────────────────────────────
+
+    const handleGenerateDemo = async () => {
+        if (!selectedLead) return;
+        setGeneratingDemo(true);
+        try {
+            const res = await apiPost<{ message: string; jobId: string }>("/api/base44/generate", {
+                leadId: selectedLead.id,
+                businessName: selectedLead.name,
+                industry: selectedLead.category || "guesthouse",
+                location: selectedLead.city || selectedLead.address || "South Africa",
+                lekkeSlaapLink: selectedLead.website?.includes("lekke") ? selectedLead.website : "",
+            });
+            alert(`Demo generation started! Job ID: ${res.jobId}\nCheck the node console for Playwright progress.`);
+            // Update UI status optimistically or set up polling
+            handleSiteStatusToggle(selectedLead.id, selectedLead.siteStatus, "demo");
+        } catch (err) {
+            alert("Failed to start demo generation.");
+        } finally {
+            setGeneratingDemo(false);
+        }
     };
 
     // ── Audit Logs ───────────────────────────────────────────────────
@@ -626,21 +650,19 @@ export default function LeadsPage() {
                                             <button
                                                 onClick={() => handleSiteStatusToggle(lead.id, lead.siteStatus, "demo")}
                                                 title={lead.siteStatus === "demo" ? "Remove Demo Site" : "Mark as Demo Site"}
-                                                className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-medium border transition-all cursor-pointer ${
-                                                    lead.siteStatus === "demo"
+                                                className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-medium border transition-all cursor-pointer ${lead.siteStatus === "demo"
                                                         ? "bg-orange-500/20 text-orange-400 border-orange-500/40 ring-1 ring-orange-400/30"
                                                         : "border-border/50 text-muted-foreground/50 hover:border-orange-500/30 hover:text-orange-400/70"
-                                                }`}>
+                                                    }`}>
                                                 <Hammer className="h-2.5 w-2.5" /> D
                                             </button>
                                             <button
                                                 onClick={() => handleSiteStatusToggle(lead.id, lead.siteStatus, "full")}
                                                 title={lead.siteStatus === "full" ? "Remove Full Site" : "Mark as Full Site"}
-                                                className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-medium border transition-all cursor-pointer ${
-                                                    lead.siteStatus === "full"
+                                                className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-medium border transition-all cursor-pointer ${lead.siteStatus === "full"
                                                         ? "bg-cyan-500/20 text-cyan-400 border-cyan-500/40 ring-1 ring-cyan-400/30"
                                                         : "border-border/50 text-muted-foreground/50 hover:border-cyan-500/30 hover:text-cyan-400/70"
-                                                }`}>
+                                                    }`}>
                                                 <Globe className="h-2.5 w-2.5" /> F
                                             </button>
                                         </div>
@@ -734,21 +756,19 @@ export default function LeadsPage() {
                                             <div className="flex gap-1">
                                                 <button
                                                     onClick={() => handleSiteStatusToggle(selectedLead.id, selectedLead.siteStatus, "demo")}
-                                                    className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium border transition-all cursor-pointer ${
-                                                        selectedLead.siteStatus === "demo"
+                                                    className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium border transition-all cursor-pointer ${selectedLead.siteStatus === "demo"
                                                             ? "bg-orange-500/20 text-orange-400 border-orange-500/40"
                                                             : "border-border text-muted-foreground hover:border-orange-500/30 hover:text-orange-400"
-                                                    }`}>
+                                                        }`}>
                                                     <Hammer className="h-3 w-3" />
                                                     {selectedLead.siteStatus === "demo" ? "✓ Demo" : "Demo"}
                                                 </button>
                                                 <button
                                                     onClick={() => handleSiteStatusToggle(selectedLead.id, selectedLead.siteStatus, "full")}
-                                                    className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium border transition-all cursor-pointer ${
-                                                        selectedLead.siteStatus === "full"
+                                                    className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium border transition-all cursor-pointer ${selectedLead.siteStatus === "full"
                                                             ? "bg-cyan-500/20 text-cyan-400 border-cyan-500/40"
                                                             : "border-border text-muted-foreground hover:border-cyan-500/30 hover:text-cyan-400"
-                                                    }`}>
+                                                        }`}>
                                                     <Globe className="h-3 w-3" />
                                                     {selectedLead.siteStatus === "full" ? "✓ Full" : "Full"}
                                                 </button>
@@ -810,14 +830,18 @@ export default function LeadsPage() {
                                         ))}
                                     </div>
 
-                                    {selectedLead.website && selectedLead.website !== "None" && (
-                                        <div className="flex justify-end pt-2">
+                                    <div className="flex justify-end gap-2 pt-2">
+                                        <Button onClick={handleGenerateDemo} disabled={generatingDemo} className="gap-2 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white border-0 shadow-md transition-all hover:scale-[1.02]">
+                                            {generatingDemo ? <span className="animate-spin">🌀</span> : <Hammer className="h-4 w-4" />}
+                                            {generatingDemo ? "Generating..." : "Generate Base44 Demo"}
+                                        </Button>
+                                        {selectedLead.website && selectedLead.website !== "None" && (
                                             <Button onClick={handleEnrich} disabled={enriching} className="gap-2 bg-indigo-600 hover:bg-indigo-700 text-white">
                                                 {enriching ? <span className="animate-spin">🌀</span> : <Zap className="h-4 w-4" />}
                                                 {enriching ? "Scanning..." : "Enrich Website"}
                                             </Button>
-                                        </div>
-                                    )}
+                                        )}
+                                    </div>
                                 </div>
                             ) : (
                                 /* History Tab */

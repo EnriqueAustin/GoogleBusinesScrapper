@@ -1046,6 +1046,145 @@ app.get('/api/leads/:id/calls', async (req, res) => {
     }
 });
 
+// ── Base44 AI Website Generator Endpoints ────────────────────────────────────
+
+const { generateDemoSite } = require('./src/base44/orchestrator');
+
+/**
+ * POST /api/base44/generate — kick off demo site generation
+ * Runs async in background, returns jobId immediately
+ */
+app.post('/api/base44/generate', async (req, res) => {
+    try {
+        const inputData = req.body;
+
+        if (!inputData.businessName) {
+            return res.status(400).json({ error: 'businessName required' });
+        }
+
+        // Create DemoJob record
+        const job = await prisma.demoJob.create({
+            data: {
+                leadId: inputData.leadId ? parseInt(inputData.leadId) : null,
+                status: 'pending',
+                inputData: inputData,
+            }
+        });
+
+        // Respond immediately with jobId
+        res.json({ message: 'Generation started', jobId: job.id });
+
+        // Run generation in background
+        (async () => {
+            try {
+                // Mark running
+                await prisma.demoJob.update({
+                    where: { id: job.id },
+                    data: { status: 'running' },
+                });
+
+                const result = await generateDemoSite(inputData, async (status, msg) => {
+                    // Update job status in DB for polling
+                    try {
+                        await prisma.demoJob.update({
+                            where: { id: job.id },
+                            data: { status: status === 'completed' || status === 'failed' ? status : 'running' },
+                        });
+                    } catch { /* non-critical */ }
+                });
+
+                // Mark completed or failed
+                await prisma.demoJob.update({
+                    where: { id: job.id },
+                    data: {
+                        status: result.success ? 'completed' : 'failed',
+                        finalPath: result.finalPath,
+                        error: result.error || null,
+                        completedAt: new Date(),
+                    },
+                });
+
+                // Update lead siteStatus if we have a leadId
+                if (result.success && inputData.leadId) {
+                    try {
+                        await prisma.lead.update({
+                            where: { id: parseInt(inputData.leadId) },
+                            data: { siteStatus: 'demo' },
+                        });
+                        await prisma.leadLog.create({
+                            data: {
+                                leadId: parseInt(inputData.leadId),
+                                action: 'demo_generated',
+                                field: 'siteStatus',
+                                oldValue: 'none',
+                                newValue: 'demo',
+                            },
+                        });
+                    } catch (err) {
+                        console.error('Failed to update lead siteStatus:', err);
+                    }
+                }
+
+            } catch (err) {
+                console.error('Base44 generation error:', err);
+                await prisma.demoJob.update({
+                    where: { id: job.id },
+                    data: {
+                        status: 'failed',
+                        error: err.message,
+                        completedAt: new Date(),
+                    },
+                }).catch(() => { });
+            }
+        })();
+
+    } catch (err) {
+        console.error('Base44 endpoint error:', err);
+        res.status(500).json({ error: 'Failed to start generation' });
+    }
+});
+
+/**
+ * GET /api/base44/status/:jobId — poll generation status
+ */
+app.get('/api/base44/status/:jobId', async (req, res) => {
+    try {
+        const job = await prisma.demoJob.findUnique({
+            where: { id: req.params.jobId },
+        });
+
+        if (!job) return res.status(404).json({ error: 'Job not found' });
+
+        res.json({
+            jobId: job.id,
+            status: job.status,
+            finalPath: job.finalPath,
+            error: job.error,
+            createdAt: job.createdAt,
+            completedAt: job.completedAt,
+        });
+    } catch (err) {
+        console.error('Base44 status error:', err);
+        res.status(500).json({ error: 'Database error' });
+    }
+});
+
+/**
+ * GET /api/base44/jobs — list all demo generation jobs
+ */
+app.get('/api/base44/jobs', async (req, res) => {
+    try {
+        const jobs = await prisma.demoJob.findMany({
+            orderBy: { createdAt: 'desc' },
+            take: 50,
+        });
+        res.json(jobs);
+    } catch (err) {
+        console.error('Base44 jobs error:', err);
+        res.status(500).json({ error: 'Database error' });
+    }
+});
+
 // ── Startup with readiness checks ─────────────────────────────────────────
 
 async function waitForDependencies(maxRetries = 15, delayMs = 2000) {

@@ -108,3 +108,14 @@ model Setting {
   key   String @id
   value String
 }
+
+model DemoJob {
+  id          String    @id @default(uuid())
+  leadId      Int?
+  status      String    @default("pending")   // pending | running | completed | failed
+  finalPath   String?
+  error       String?
+  inputData   Json
+  createdAt   DateTime  @default(now())
+  completedAt DateTime?
+}
