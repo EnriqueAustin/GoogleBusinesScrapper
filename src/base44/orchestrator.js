@@ -97,6 +97,7 @@ async function generateDemoSite(inputData, onStatus) {
 
         // 9. Trigger export
         status('exporting', 'Triggering site export');
+        downloadPromise.startTimer();
         await triggerExport(page, base44Config.extensionId);
 
         // 10. Wait for download

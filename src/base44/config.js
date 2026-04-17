@@ -14,6 +14,9 @@ const base44Config = {
     // Base44 Downloader Chrome extension ID
     extensionId: process.env.BASE44_EXTENSION_ID || '',
 
+    // Base44 Downloader Chrome extension Path
+    extensionPath: process.env.BASE44_EXTENSION_PATH || '',
+
     // How long to wait for Base44 to finish building (ms)
     buildTimeoutMs: parseInt(process.env.BASE44_BUILD_TIMEOUT) || 120000,
 

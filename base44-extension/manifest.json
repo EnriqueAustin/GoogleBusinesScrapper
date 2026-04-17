@@ -1,0 +1,34 @@
+{
+   "action": {
+      "default_icon": {
+         "128": "icons/icon128.png",
+         "16": "icons/icon16.png",
+         "32": "icons/icon32.png",
+         "48": "icons/icon48.png"
+      },
+      "default_popup": "popup.html"
+   },
+   "content_scripts": [ {
+      "js": [ "jszip.min.js", "content.js" ],
+      "matches": [ "*://*.base44.io/*", "*://base44.io/*", "*://app.base44.com/*" ]
+   } ],
+   "default_locale": "en",
+   "description": "__MSG_extDescription__",
+   "homepage_url": "https://base44downloader.vercel.app/",
+   "icons": {
+      "128": "icons/icon128.png",
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png"
+   },
+   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA0mBnQVPUe/f9jROvI3JPrSF0xRSl2kqbgw73RAgkIUoaiow7AYghDGBnPc/zhxvNQHWXOxK/vz/Br9EFiU+UhUzlOpLNoxUZ2bIKd+kEEILp3GLjq6/c6OqOAwErRQDpAHZvExTXriDQFHkd5pPBfwErwVrZFkYQCPmTqvgCcUykglMN1sHKx7gQfB8ITMdqp1nDL5xlpVYPJ02yzj/Rc5zEK3Bwblu5IWniHzn9D2fP/XvVJwVES+PKgsd5FDkc3MiRzYfdwJXtjJr9pCxYbOgE6yj3vv801dOUnhp8bcSeoQq4xZoVrOC+qqfcBjbGZGEnIaxZdl2YwIoJc9y3RwIDAQAB",
+   "manifest_version": 3,
+   "name": "__MSG_extName__",
+   "permissions": [ "activeTab", "scripting", "storage" ],
+   "update_url": "https://clients2.google.com/service/update2/crx",
+   "version": "1.0.9",
+   "web_accessible_resources": [ {
+      "matches": [ "*://*.base44.io/*", "*://base44.io/*", "*://app.base44.com/*" ],
+      "resources": [ "jszip.min.js", "icons/icon48.png", "page-bridge.js" ]
+   } ]
+}

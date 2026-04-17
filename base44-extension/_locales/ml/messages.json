@@ -1,0 +1,350 @@
+{
+   "base44Detected": {
+      "description": "Hero title when on a Base44 non-code page",
+      "message": "Base44 ആപ്പ് കണ്ടെത്തി"
+   },
+   "base44DetectedDesc": {
+      "description": "Hero description when on a Base44 non-code page",
+      "message": "ആദ്യം കോഡ് വര്‍ക്ക്സ്പേസ് തുറക്കുക, ശേഷം എക്സ്പോര്‍ട്ട് പ്രവര്‍ത്തിപ്പിക്കുക."
+   },
+   "brandName": {
+      "description": "Brand name shown in popup header",
+      "message": "Base44 Downloader"
+   },
+   "cancelBtn": {
+      "description": "Cancel button in warning modal",
+      "message": "റദ്ദാക്കുക"
+   },
+   "cleanImportLines": {
+      "description": "Toggle label for clean imports option",
+      "message": "ഇംപോര്‍ട്ട് ലൈനുകള്‍ ക്ലീന്‍ ചെയ്യുക"
+   },
+   "clearBtn": {
+      "description": "Button to clear the log",
+      "message": "മായ്ക്കുക"
+   },
+   "closeAnywayBtn": {
+      "description": "Close button in warning modal to proceed with leaving",
+      "message": "എന്തായാലും അടയ്ക്കുക"
+   },
+   "closeBtn": {
+      "description": "Close button label",
+      "message": "Close"
+   },
+   "codeWorkspaceReady": {
+      "description": "Hero title when code workspace is ready for export",
+      "message": "കോഡ് വര്‍ക്ക്സ്പേസ് തയ്യാര്‍"
+   },
+   "copyJson": {
+      "description": "Button label to copy JSON to clipboard",
+      "message": "JSON കോപ്പി ചെയ്യുക"
+   },
+   "copyJsonOnly": {
+      "description": "Toggle label for copy JSON option",
+      "message": "JSON മാത്രം കോപ്പി ചെയ്യുക"
+   },
+   "currentPage": {
+      "description": "Label above the current page hostname",
+      "message": "നിലവിലെ പേജ്"
+   },
+   "deselectAll": {
+      "description": "Deselect all files button label",
+      "message": "None"
+   },
+   "doneFoundFiles": {
+      "description": "Log message when extraction completes successfully",
+      "message": "പൂര്‍ത്തിയായി. $COUNT$ ഫയലുകള്‍ കണ്ടെത്തി.",
+      "placeholders": {
+         "COUNT": {
+            "content": "$1",
+            "example": "42"
+         }
+      }
+   },
+   "downloadZip": {
+      "description": "Button label to download ZIP file",
+      "message": "ZIP ഡൗണ്‍ലോഡ് ചെയ്യുക"
+   },
+   "exportCancelled": {
+      "description": "Log message when user cancels file selection",
+      "message": "Export cancelled."
+   },
+   "exportError": {
+      "description": "Generic export error message",
+      "message": "എക്സ്പോര്‍ട്ട് ചെയ്യുമ്പോള്‍ എന്തോ തെറ്റ് സംഭവിച്ചു."
+   },
+   "exportFailed": {
+      "description": "Export failure message with error details",
+      "message": "എക്സ്പോര്‍ട്ട് പരാജയപ്പെട്ടു: $ERROR$",
+      "placeholders": {
+         "ERROR": {
+            "content": "$1",
+            "example": "Network error"
+         }
+      }
+   },
+   "exportPanel": {
+      "description": "Subtitle in popup header",
+      "message": "എക്സ്പോര്‍ട്ട് പാനല്‍"
+   },
+   "exportSelected": {
+      "description": "Button label to export selected files",
+      "message": "Export Selected"
+   },
+   "exportSuccess": {
+      "description": "Notification message on successful export",
+      "message": "എക്സ്പോര്‍ട്ട് വിജയകരമായി പൂര്‍ത്തിയായി."
+   },
+   "exportSuccessJsonAndZip": {
+      "description": "Success detail when the export copies JSON and starts the ZIP download",
+      "message": "JSON copied and ZIP download started."
+   },
+   "exportSuccessJsonOnly": {
+      "description": "Success detail when the export only copies JSON",
+      "message": "JSON copied and ready to paste."
+   },
+   "exportSuccessPositive": {
+      "description": "Positive success headline shown in in-page completion toast",
+      "message": "Export completed successfully!"
+   },
+   "exportSuccessReady": {
+      "description": "Success detail when export completes without auto-copy or ZIP download",
+      "message": "Your export is ready."
+   },
+   "extDescription": {
+      "description": "Extension description shown in Chrome Web Store",
+      "message": "Base44 കോഡ് വര്‍ക്ക്സ്പേസ് ഫയലുകള്‍ ഒരു ക്ലിക്കില്‍ ക്ലീന്‍ JSON അല്ലെങ്കില്‍ ZIP ആയി എക്സ്പോര്‍ട്ട് ചെയ്യൂ, ഓപ്ഷണല്‍ ഇംപോര്‍ട്ട് ക്ലീനപ്പും ലോക്കല്‍-മാത്രം പ്രോസസ്സിംഗും സഹിതം."
+   },
+   "extName": {
+      "description": "Extension name shown in Chrome Web Store and browser",
+      "message": "Base44 Downloader"
+   },
+   "extractionInProgress": {
+      "description": "Error when user tries to start a second export",
+      "message": "An export is already running. Please wait."
+   },
+   "filesSelected": {
+      "description": "File count label suffix in selection panel",
+      "message": "files selected"
+   },
+   "generateZip": {
+      "description": "Toggle label for generate ZIP option",
+      "message": "ZIP സൃഷ്ടിക്കുക"
+   },
+   "inlineBrandExporter": {
+      "description": "Brand label shown in injected in-page export button",
+      "message": "Base44 Exporter"
+   },
+   "inlineByline": {
+      "description": "Byline shown in the in-page export button pill",
+      "message": "by Base44Downloader"
+   },
+   "invalidAppId": {
+      "description": "Error message when app ID cannot be found in URL",
+      "message": "ഈ Base44 URL-ല്‍ സാധുവായ ആപ്പ് ഐഡി ഉള്‍പ്പെടുന്നില്ല."
+   },
+   "jsonCopied": {
+      "description": "Log message when JSON is manually copied",
+      "message": "JSON കോപ്പി ചെയ്തു."
+   },
+   "jsonCopiedAuto": {
+      "description": "Log message when JSON is auto-copied to clipboard",
+      "message": "JSON സ്വയമേവ കോപ്പി ചെയ്തു."
+   },
+   "loaderSubtitle": {
+      "description": "Subtitle shown below the loading spinner during extraction",
+      "message": "This may take a moment"
+   },
+   "noContentExtracted": {
+      "description": "Error when extraction finds no readable content",
+      "message": "No file content could be read. Try refreshing the page."
+   },
+   "noFilesFound": {
+      "description": "Error when no files are detected in the workspace",
+      "message": "No files found. Make sure the code editor is open."
+   },
+   "officialSite": {
+      "description": "Footer link to official website",
+      "message": "ഔദ്യോഗിക സൈറ്റ്"
+   },
+   "openBase44First": {
+      "description": "Button label when user is not on a Base44 page",
+      "message": "ആദ്യം Base44 തുറക്കുക"
+   },
+   "openBase44ToContinue": {
+      "description": "Error message when on an unsupported page",
+      "message": "തുടരാന്‍ ഒരു Base44 ആപ്പ് പേജ് തുറക്കുക."
+   },
+   "openCodePage": {
+      "description": "Button label to navigate to the code workspace",
+      "message": "കോഡ് പേജ് തുറക്കുക"
+   },
+   "openingCodePage": {
+      "description": "Log message when navigating to the code page",
+      "message": "കോഡ് പേജ് തുറക്കുന്നു..."
+   },
+   "pauseBtn": {
+      "description": "Pause button label for extraction progress controls",
+      "message": "Pause"
+   },
+   "preparingZip": {
+      "description": "Log message during ZIP file preparation",
+      "message": "ZIP ഫയല്‍ തയ്യാറാക്കുന്നു..."
+   },
+   "readyMessage": {
+      "description": "Initial log entry message",
+      "message": "നിങ്ങള്‍ തയ്യാറാകുമ്പോള്‍."
+   },
+   "resumeBtn": {
+      "description": "Resume button label for extraction progress controls",
+      "message": "Resume"
+   },
+   "retryingExtraction": {
+      "description": "Loader text when falling back to content script extraction",
+      "message": "Retrying with fallback method..."
+   },
+   "reviewPromptBody": {
+      "description": "Body copy for the review prompt shown after successful exports",
+      "message": "A quick review on the Chrome Web Store helps more people discover it."
+   },
+   "reviewPromptCta": {
+      "description": "Primary CTA for the review prompt",
+      "message": "Leave a review"
+   },
+   "reviewPromptMeta": {
+      "description": "Meta text shown under the review prompt after the user reaches the export threshold",
+      "message": "Shown after $COUNT$ successful exports.",
+      "placeholders": {
+         "COUNT": {
+            "content": "$1",
+            "example": "3"
+         }
+      }
+   },
+   "reviewPromptNever": {
+      "description": "Action for permanently dismissing the review prompt",
+      "message": "Don't show again"
+   },
+   "reviewPromptNotNow": {
+      "description": "Secondary action for dismissing the review prompt temporarily",
+      "message": "Not now"
+   },
+   "reviewPromptTitle": {
+      "description": "Headline for the review prompt shown after successful exports",
+      "message": "Has Base44 been useful for you?"
+   },
+   "selectAll": {
+      "description": "Select all files button label",
+      "message": "All"
+   },
+   "selectFilesTitle": {
+      "description": "Title of the file selection panel",
+      "message": "Select files to export"
+   },
+   "showInlineButton": {
+      "description": "Toggle label to enable or disable the injected in-page export button",
+      "message": "Show inline button in Base44"
+   },
+   "startExport": {
+      "description": "Primary button label to start export",
+      "message": "എക്സ്പോര്‍ട്ട് ആരംഭിക്കുക"
+   },
+   "startingExtraction": {
+      "description": "Log message when extraction begins",
+      "message": "എക്സ്ട്രാക്ഷന്‍ പ്രക്രിയ ആരംഭിക്കുന്നു..."
+   },
+   "statusError": {
+      "description": "Status indicator on error",
+      "message": "പിശക്"
+   },
+   "statusExtracting": {
+      "description": "Status indicator during extraction",
+      "message": "എക്സ്ട്രാക്ട് ചെയ്യുന്നു..."
+   },
+   "statusGoToCode": {
+      "description": "Status indicator when navigation to code page is needed",
+      "message": "കോഡിലേക്ക് പോകുക"
+   },
+   "statusPaused": {
+      "description": "Status indicator when extraction is paused",
+      "message": "Paused"
+   },
+   "statusReady": {
+      "description": "Status indicator when extension is ready",
+      "message": "തയ്യാര്‍"
+   },
+   "statusUnsupported": {
+      "description": "Status indicator for unsupported pages",
+      "message": "പിന്തുണയില്ല"
+   },
+   "supportCta": {
+      "description": "Support CTA shown in the in-page completion toast",
+      "message": "Support the project"
+   },
+   "supportProject": {
+      "description": "Support link label in popup footer",
+      "message": "എനിക്കൊരു കാപ്പി വാങ്ങിത്തരൂ"
+   },
+   "supportPrompt": {
+      "description": "Support prompt shown before the CTA in the in-page completion toast",
+      "message": "Did this help?"
+   },
+   "tipCleanImports": {
+      "description": "Tooltip for the clean imports toggle",
+      "message": "Makes the code work outside Base44 by fixing dependencies"
+   },
+   "tipCopyJsonOnly": {
+      "description": "Tooltip for the copy JSON only toggle",
+      "message": "Copies your code as text you can paste anywhere"
+   },
+   "tipGenerateZip": {
+      "description": "Tooltip for the generate ZIP toggle",
+      "message": "Downloads all your files in a single .zip folder"
+   },
+   "tipInlineButton": {
+      "description": "Tooltip for the inline button toggle",
+      "message": "Adds an export button right inside the Base44 page"
+   },
+   "unsupportedPage": {
+      "description": "Hero title for unsupported pages",
+      "message": "പിന്തുണയില്ലാത്ത പേജ്"
+   },
+   "unsupportedPageDesc": {
+      "description": "Hero description for unsupported pages",
+      "message": "എക്സ്പോര്‍ട്ട് നിയന്ത്രണങ്ങള്‍ സജീവമാക്കാന്‍ ഒരു Base44 ആപ്പ് പേജ് തുറക്കുക."
+   },
+   "updates": {
+      "description": "Log container header",
+      "message": "അപ്ഡേറ്റുകള്‍"
+   },
+   "updatesCleared": {
+      "description": "Log message after clearing the updates log",
+      "message": "അപ്ഡേറ്റുകള്‍ മായ്ച്ചു."
+   },
+   "warningMessage": {
+      "description": "Warning modal message body",
+      "message": "ഈ പേജ് അടയ്ക്കുന്നത് എല്ലാ എക്സ്ട്രാക്ഷന്‍ പുരോഗതിയും നഷ്ടപ്പെടുത്തും. നിങ്ങള്‍ക്ക് ഉറപ്പായും പോകണമെന്നുണ്ടോ?"
+   },
+   "warningTitle": {
+      "description": "Title of the warning modal when user tries to leave during extraction",
+      "message": "മുന്നറിയിപ്പ്!"
+   },
+   "zipError": {
+      "description": "ZIP creation error message",
+      "message": "ZIP സൃഷ്ടിക്കാനായില്ല: $ERROR$",
+      "placeholders": {
+         "ERROR": {
+            "content": "$1",
+            "example": "Out of memory"
+         }
+      }
+   },
+   "zipStarted": {
+      "description": "Log message when ZIP download begins",
+      "message": "ZIP ഡൗണ്‍ലോഡ് സ്വയമേവ ആരംഭിച്ചു."
+   },
+   "zipTurnedOff": {
+      "description": "Message when user tries to download ZIP but toggle is off",
+      "message": "ZIP എക്സ്പോര്‍ട്ട് നിലവില്‍ ഓഫ് ആണ്."
+   }
+}

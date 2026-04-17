@@ -1,0 +1,350 @@
+{
+   "base44Detected": {
+      "description": "Hero title when on a Base44 non-code page",
+      "message": "偵測到 Base44 應用程式"
+   },
+   "base44DetectedDesc": {
+      "description": "Hero description when on a Base44 non-code page",
+      "message": "請先開啟程式碼工作區，然後執行匯出。"
+   },
+   "brandName": {
+      "description": "Brand name shown in popup header",
+      "message": "Base44 Downloader"
+   },
+   "cancelBtn": {
+      "description": "Cancel button in warning modal",
+      "message": "取消"
+   },
+   "cleanImportLines": {
+      "description": "Toggle label for clean imports option",
+      "message": "清理匯入行"
+   },
+   "clearBtn": {
+      "description": "Button to clear the log",
+      "message": "清除"
+   },
+   "closeAnywayBtn": {
+      "description": "Close button in warning modal to proceed with leaving",
+      "message": "仍然關閉"
+   },
+   "closeBtn": {
+      "description": "Close button label",
+      "message": "Close"
+   },
+   "codeWorkspaceReady": {
+      "description": "Hero title when code workspace is ready for export",
+      "message": "程式碼工作區已就緒"
+   },
+   "copyJson": {
+      "description": "Button label to copy JSON to clipboard",
+      "message": "複製 JSON"
+   },
+   "copyJsonOnly": {
+      "description": "Toggle label for copy JSON option",
+      "message": "僅複製 JSON"
+   },
+   "currentPage": {
+      "description": "Label above the current page hostname",
+      "message": "目前頁面"
+   },
+   "deselectAll": {
+      "description": "Deselect all files button label",
+      "message": "None"
+   },
+   "doneFoundFiles": {
+      "description": "Log message when extraction completes successfully",
+      "message": "完成。找到 $COUNT$ 個檔案。",
+      "placeholders": {
+         "COUNT": {
+            "content": "$1",
+            "example": "42"
+         }
+      }
+   },
+   "downloadZip": {
+      "description": "Button label to download ZIP file",
+      "message": "下載 ZIP"
+   },
+   "exportCancelled": {
+      "description": "Log message when user cancels file selection",
+      "message": "Export cancelled."
+   },
+   "exportError": {
+      "description": "Generic export error message",
+      "message": "匯出時發生問題。"
+   },
+   "exportFailed": {
+      "description": "Export failure message with error details",
+      "message": "匯出失敗：$ERROR$",
+      "placeholders": {
+         "ERROR": {
+            "content": "$1",
+            "example": "Network error"
+         }
+      }
+   },
+   "exportPanel": {
+      "description": "Subtitle in popup header",
+      "message": "匯出面板"
+   },
+   "exportSelected": {
+      "description": "Button label to export selected files",
+      "message": "Export Selected"
+   },
+   "exportSuccess": {
+      "description": "Notification message on successful export",
+      "message": "匯出已成功完成。"
+   },
+   "exportSuccessJsonAndZip": {
+      "description": "Success detail when the export copies JSON and starts the ZIP download",
+      "message": "JSON copied and ZIP download started."
+   },
+   "exportSuccessJsonOnly": {
+      "description": "Success detail when the export only copies JSON",
+      "message": "JSON copied and ready to paste."
+   },
+   "exportSuccessPositive": {
+      "description": "Positive success headline shown in in-page completion toast",
+      "message": "Export completed successfully!"
+   },
+   "exportSuccessReady": {
+      "description": "Success detail when export completes without auto-copy or ZIP download",
+      "message": "Your export is ready."
+   },
+   "extDescription": {
+      "description": "Extension description shown in Chrome Web Store",
+      "message": "一鍵將 Base44 程式碼工作區檔案匯出為整潔的 JSON 或 ZIP，支援選擇性匯入清理，完全本機處理。"
+   },
+   "extName": {
+      "description": "Extension name shown in Chrome Web Store and browser",
+      "message": "Base44 Downloader"
+   },
+   "extractionInProgress": {
+      "description": "Error when user tries to start a second export",
+      "message": "An export is already running. Please wait."
+   },
+   "filesSelected": {
+      "description": "File count label suffix in selection panel",
+      "message": "files selected"
+   },
+   "generateZip": {
+      "description": "Toggle label for generate ZIP option",
+      "message": "產生 ZIP"
+   },
+   "inlineBrandExporter": {
+      "description": "Brand label shown in injected in-page export button",
+      "message": "Base44 Exporter"
+   },
+   "inlineByline": {
+      "description": "Byline shown in the in-page export button pill",
+      "message": "by Base44Downloader"
+   },
+   "invalidAppId": {
+      "description": "Error message when app ID cannot be found in URL",
+      "message": "此 Base44 URL 不包含有效的應用程式 ID。"
+   },
+   "jsonCopied": {
+      "description": "Log message when JSON is manually copied",
+      "message": "JSON 已複製。"
+   },
+   "jsonCopiedAuto": {
+      "description": "Log message when JSON is auto-copied to clipboard",
+      "message": "JSON 已自動複製。"
+   },
+   "loaderSubtitle": {
+      "description": "Subtitle shown below the loading spinner during extraction",
+      "message": "This may take a moment"
+   },
+   "noContentExtracted": {
+      "description": "Error when extraction finds no readable content",
+      "message": "No file content could be read. Try refreshing the page."
+   },
+   "noFilesFound": {
+      "description": "Error when no files are detected in the workspace",
+      "message": "No files found. Make sure the code editor is open."
+   },
+   "officialSite": {
+      "description": "Footer link to official website",
+      "message": "官方網站"
+   },
+   "openBase44First": {
+      "description": "Button label when user is not on a Base44 page",
+      "message": "請先開啟 Base44"
+   },
+   "openBase44ToContinue": {
+      "description": "Error message when on an unsupported page",
+      "message": "請開啟 Base44 應用程式頁面以繼續。"
+   },
+   "openCodePage": {
+      "description": "Button label to navigate to the code workspace",
+      "message": "開啟程式碼頁"
+   },
+   "openingCodePage": {
+      "description": "Log message when navigating to the code page",
+      "message": "正在開啟程式碼頁..."
+   },
+   "pauseBtn": {
+      "description": "Pause button label for extraction progress controls",
+      "message": "Pause"
+   },
+   "preparingZip": {
+      "description": "Log message during ZIP file preparation",
+      "message": "正在準備 ZIP 檔案..."
+   },
+   "readyMessage": {
+      "description": "Initial log entry message",
+      "message": "準備就緒，隨時開始。"
+   },
+   "resumeBtn": {
+      "description": "Resume button label for extraction progress controls",
+      "message": "Resume"
+   },
+   "retryingExtraction": {
+      "description": "Loader text when falling back to content script extraction",
+      "message": "Retrying with fallback method..."
+   },
+   "reviewPromptBody": {
+      "description": "Body copy for the review prompt shown after successful exports",
+      "message": "A quick review on the Chrome Web Store helps more people discover it."
+   },
+   "reviewPromptCta": {
+      "description": "Primary CTA for the review prompt",
+      "message": "Leave a review"
+   },
+   "reviewPromptMeta": {
+      "description": "Meta text shown under the review prompt after the user reaches the export threshold",
+      "message": "Shown after $COUNT$ successful exports.",
+      "placeholders": {
+         "COUNT": {
+            "content": "$1",
+            "example": "3"
+         }
+      }
+   },
+   "reviewPromptNever": {
+      "description": "Action for permanently dismissing the review prompt",
+      "message": "Don't show again"
+   },
+   "reviewPromptNotNow": {
+      "description": "Secondary action for dismissing the review prompt temporarily",
+      "message": "Not now"
+   },
+   "reviewPromptTitle": {
+      "description": "Headline for the review prompt shown after successful exports",
+      "message": "Has Base44 been useful for you?"
+   },
+   "selectAll": {
+      "description": "Select all files button label",
+      "message": "All"
+   },
+   "selectFilesTitle": {
+      "description": "Title of the file selection panel",
+      "message": "Select files to export"
+   },
+   "showInlineButton": {
+      "description": "Toggle label to enable or disable the injected in-page export button",
+      "message": "Show inline button in Base44"
+   },
+   "startExport": {
+      "description": "Primary button label to start export",
+      "message": "開始匯出"
+   },
+   "startingExtraction": {
+      "description": "Log message when extraction begins",
+      "message": "正在開始擷取流程..."
+   },
+   "statusError": {
+      "description": "Status indicator on error",
+      "message": "錯誤"
+   },
+   "statusExtracting": {
+      "description": "Status indicator during extraction",
+      "message": "擷取中..."
+   },
+   "statusGoToCode": {
+      "description": "Status indicator when navigation to code page is needed",
+      "message": "前往程式碼頁"
+   },
+   "statusPaused": {
+      "description": "Status indicator when extraction is paused",
+      "message": "Paused"
+   },
+   "statusReady": {
+      "description": "Status indicator when extension is ready",
+      "message": "就緒"
+   },
+   "statusUnsupported": {
+      "description": "Status indicator for unsupported pages",
+      "message": "不支援"
+   },
+   "supportCta": {
+      "description": "Support CTA shown in the in-page completion toast",
+      "message": "Support the project"
+   },
+   "supportProject": {
+      "description": "Support link label in popup footer",
+      "message": "給我買杯咖啡"
+   },
+   "supportPrompt": {
+      "description": "Support prompt shown before the CTA in the in-page completion toast",
+      "message": "Did this help?"
+   },
+   "tipCleanImports": {
+      "description": "Tooltip for the clean imports toggle",
+      "message": "Makes the code work outside Base44 by fixing dependencies"
+   },
+   "tipCopyJsonOnly": {
+      "description": "Tooltip for the copy JSON only toggle",
+      "message": "Copies your code as text you can paste anywhere"
+   },
+   "tipGenerateZip": {
+      "description": "Tooltip for the generate ZIP toggle",
+      "message": "Downloads all your files in a single .zip folder"
+   },
+   "tipInlineButton": {
+      "description": "Tooltip for the inline button toggle",
+      "message": "Adds an export button right inside the Base44 page"
+   },
+   "unsupportedPage": {
+      "description": "Hero title for unsupported pages",
+      "message": "不支援的頁面"
+   },
+   "unsupportedPageDesc": {
+      "description": "Hero description for unsupported pages",
+      "message": "請開啟 Base44 應用程式頁面以啟用匯出功能。"
+   },
+   "updates": {
+      "description": "Log container header",
+      "message": "動態"
+   },
+   "updatesCleared": {
+      "description": "Log message after clearing the updates log",
+      "message": "動態已清除。"
+   },
+   "warningMessage": {
+      "description": "Warning modal message body",
+      "message": "關閉此頁面將遺失所有擷取進度。確定要離開嗎？"
+   },
+   "warningTitle": {
+      "description": "Title of the warning modal when user tries to leave during extraction",
+      "message": "警告！"
+   },
+   "zipError": {
+      "description": "ZIP creation error message",
+      "message": "無法建立 ZIP：$ERROR$",
+      "placeholders": {
+         "ERROR": {
+            "content": "$1",
+            "example": "Out of memory"
+         }
+      }
+   },
+   "zipStarted": {
+      "description": "Log message when ZIP download begins",
+      "message": "ZIP 下載已自動開始。"
+   },
+   "zipTurnedOff": {
+      "description": "Message when user tries to download ZIP but toggle is off",
+      "message": "ZIP 匯出目前已關閉。"
+   }
+}

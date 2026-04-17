@@ -5,13 +5,6 @@ import { apiGet, apiPost, apiPatch } from "@/lib/api";
 import { format, formatDistanceToNow, isToday, isBefore, startOfDay } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-"use client";
-
-import { useEffect, useState, useCallback } from "react";
-import { apiGet, apiPost, apiPatch } from "@/lib/api";
-import { format, formatDistanceToNow, isToday, isBefore, startOfDay } from "date-fns";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -284,7 +277,7 @@ export default function CRMPage() {
             const nextSetupFee = patchData.setupFee !== undefined ? patchData.setupFee : currentLead.setupFee;
             const nextMonthlyFee = patchData.monthlyFee !== undefined ? patchData.monthlyFee : currentLead.monthlyFee;
             const nextEstimatedValue = patchData.estimatedValue !== undefined
-                ? patchData.estimatedValue 
+                ? patchData.estimatedValue
                 : patchData.setupFee !== undefined || patchData.monthlyFee !== undefined
                     ? (nextSetupFee == null && nextMonthlyFee == null
                         ? null
@@ -318,11 +311,32 @@ export default function CRMPage() {
     const liveSetupFee = parseCurrencyInput(setupFee);
     const liveMonthlyFee = parseCurrencyInput(monthlyFee);
     const liveManualValue = parseCurrencyInput(manualValue);
-    const liveEstimatedValue = liveManualValue !== null 
-        ? liveManualValue 
+    const liveEstimatedValue = liveManualValue !== null
+        ? liveManualValue
         : (liveSetupFee == null && liveMonthlyFee == null
             ? null
             : (liveSetupFee || 0) + ((liveMonthlyFee || 0) * 12));
+
+    const handleSiteStatusToggle = async (status: string) => {
+        if (!currentLead) return;
+        try {
+            const nextStatus = currentLead.siteStatus === status ? "none" : status;
+            const updated = await apiPatch(`${API}/leads/${currentLead.id}/crm`, { siteStatus: nextStatus });
+            setQueue(q => q.map(l => l.id === currentLead.id ? { ...l, ...updated } : l));
+            fetchStats();
+        } catch { alert("Failed to update site status"); }
+    };
+
+    const handleQuickStatus = async (status: string) => {
+        if (!currentLead) return;
+        updateCrmStatus(currentLead.id, status);
+        setQueueIdx(i => Math.min(i + 1, queue.length - 1));
+    };
+
+    const totalActive = stats ? (Number(stats.new || 0) + Number(stats.attempting || 0) + Number(stats.connected || 0) + Number(stats.qualified || 0)) : 0;
+
+    return (
+        <div className="p-6 max-w-[1600px] mx-auto space-y-6 min-h-screen">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
@@ -582,21 +596,19 @@ export default function CRMPage() {
                                     <p className="text-xs font-medium text-muted-foreground flex items-center gap-1"><Globe className="h-3 w-3" /> Site Status</p>
                                     <div className="flex gap-2">
                                         <Button size="sm" variant="outline"
-                                            className={`h-8 text-xs gap-1.5 flex-1 transition-all ${
-                                                currentLead.siteStatus === "demo"
+                                            className={`h-8 text-xs gap-1.5 flex-1 transition-all ${currentLead.siteStatus === "demo"
                                                     ? "bg-orange-500/20 border-orange-500/50 text-orange-400 ring-1 ring-orange-400/30"
                                                     : "border-orange-500/30 text-orange-400/70 hover:bg-orange-500/10"
-                                            }`}
+                                                }`}
                                             onClick={() => handleSiteStatusToggle("demo")}>
                                             <Hammer className="h-3.5 w-3.5" />
                                             {currentLead.siteStatus === "demo" ? "✓ Demo Site" : "Demo Site"}
                                         </Button>
                                         <Button size="sm" variant="outline"
-                                            className={`h-8 text-xs gap-1.5 flex-1 transition-all ${
-                                                currentLead.siteStatus === "full"
+                                            className={`h-8 text-xs gap-1.5 flex-1 transition-all ${currentLead.siteStatus === "full"
                                                     ? "bg-cyan-500/20 border-cyan-500/50 text-cyan-400 ring-1 ring-cyan-400/30"
                                                     : "border-cyan-500/30 text-cyan-400/70 hover:bg-cyan-500/10"
-                                            }`}
+                                                }`}
                                             onClick={() => handleSiteStatusToggle("full")}>
                                             <Globe className="h-3.5 w-3.5" />
                                             {currentLead.siteStatus === "full" ? "✓ Full Site" : "Full Site"}

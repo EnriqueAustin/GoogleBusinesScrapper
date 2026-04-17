@@ -1,0 +1,350 @@
+{
+   "base44Detected": {
+      "description": "Hero title when on a Base44 non-code page",
+      "message": "ตรวจพบแอป Base44"
+   },
+   "base44DetectedDesc": {
+      "description": "Hero description when on a Base44 non-code page",
+      "message": "เปิด workspace โค้ดก่อน แล้วจึงเริ่มส่งออก"
+   },
+   "brandName": {
+      "description": "Brand name shown in popup header",
+      "message": "Base44 Downloader"
+   },
+   "cancelBtn": {
+      "description": "Cancel button in warning modal",
+      "message": "ยกเลิก"
+   },
+   "cleanImportLines": {
+      "description": "Toggle label for clean imports option",
+      "message": "ทำความสะอาดบรรทัด import"
+   },
+   "clearBtn": {
+      "description": "Button to clear the log",
+      "message": "ล้าง"
+   },
+   "closeAnywayBtn": {
+      "description": "Close button in warning modal to proceed with leaving",
+      "message": "ปิดอยู่ดี"
+   },
+   "closeBtn": {
+      "description": "Close button label",
+      "message": "Close"
+   },
+   "codeWorkspaceReady": {
+      "description": "Hero title when code workspace is ready for export",
+      "message": "workspace โค้ดพร้อมแล้ว"
+   },
+   "copyJson": {
+      "description": "Button label to copy JSON to clipboard",
+      "message": "คัดลอก JSON"
+   },
+   "copyJsonOnly": {
+      "description": "Toggle label for copy JSON option",
+      "message": "คัดลอก JSON เท่านั้น"
+   },
+   "currentPage": {
+      "description": "Label above the current page hostname",
+      "message": "หน้าปัจจุบัน"
+   },
+   "deselectAll": {
+      "description": "Deselect all files button label",
+      "message": "None"
+   },
+   "doneFoundFiles": {
+      "description": "Log message when extraction completes successfully",
+      "message": "เสร็จสิ้น พบ $COUNT$ ไฟล์",
+      "placeholders": {
+         "COUNT": {
+            "content": "$1",
+            "example": "42"
+         }
+      }
+   },
+   "downloadZip": {
+      "description": "Button label to download ZIP file",
+      "message": "ดาวน์โหลด ZIP"
+   },
+   "exportCancelled": {
+      "description": "Log message when user cancels file selection",
+      "message": "Export cancelled."
+   },
+   "exportError": {
+      "description": "Generic export error message",
+      "message": "เกิดข้อผิดพลาดระหว่างการส่งออก"
+   },
+   "exportFailed": {
+      "description": "Export failure message with error details",
+      "message": "ส่งออกล้มเหลว: $ERROR$",
+      "placeholders": {
+         "ERROR": {
+            "content": "$1",
+            "example": "Network error"
+         }
+      }
+   },
+   "exportPanel": {
+      "description": "Subtitle in popup header",
+      "message": "แผงส่งออก"
+   },
+   "exportSelected": {
+      "description": "Button label to export selected files",
+      "message": "Export Selected"
+   },
+   "exportSuccess": {
+      "description": "Notification message on successful export",
+      "message": "ส่งออกเสร็จสมบูรณ์"
+   },
+   "exportSuccessJsonAndZip": {
+      "description": "Success detail when the export copies JSON and starts the ZIP download",
+      "message": "JSON copied and ZIP download started."
+   },
+   "exportSuccessJsonOnly": {
+      "description": "Success detail when the export only copies JSON",
+      "message": "JSON copied and ready to paste."
+   },
+   "exportSuccessPositive": {
+      "description": "Positive success headline shown in in-page completion toast",
+      "message": "Export completed successfully!"
+   },
+   "exportSuccessReady": {
+      "description": "Success detail when export completes without auto-copy or ZIP download",
+      "message": "Your export is ready."
+   },
+   "extDescription": {
+      "description": "Extension description shown in Chrome Web Store",
+      "message": "ส่งออกไฟล์ workspace โค้ด Base44 เป็น JSON หรือ ZIP ที่เรียบร้อยได้ในคลิกเดียว พร้อมตัวเลือกทำความสะอาด import และประมวลผลในเครื่องเท่านั้น"
+   },
+   "extName": {
+      "description": "Extension name shown in Chrome Web Store and browser",
+      "message": "Base44 Downloader"
+   },
+   "extractionInProgress": {
+      "description": "Error when user tries to start a second export",
+      "message": "An export is already running. Please wait."
+   },
+   "filesSelected": {
+      "description": "File count label suffix in selection panel",
+      "message": "files selected"
+   },
+   "generateZip": {
+      "description": "Toggle label for generate ZIP option",
+      "message": "สร้าง ZIP"
+   },
+   "inlineBrandExporter": {
+      "description": "Brand label shown in injected in-page export button",
+      "message": "Base44 Exporter"
+   },
+   "inlineByline": {
+      "description": "Byline shown in the in-page export button pill",
+      "message": "by Base44Downloader"
+   },
+   "invalidAppId": {
+      "description": "Error message when app ID cannot be found in URL",
+      "message": "URL Base44 นี้ไม่มี ID แอปที่ถูกต้อง"
+   },
+   "jsonCopied": {
+      "description": "Log message when JSON is manually copied",
+      "message": "คัดลอก JSON แล้ว"
+   },
+   "jsonCopiedAuto": {
+      "description": "Log message when JSON is auto-copied to clipboard",
+      "message": "คัดลอก JSON โดยอัตโนมัติแล้ว"
+   },
+   "loaderSubtitle": {
+      "description": "Subtitle shown below the loading spinner during extraction",
+      "message": "This may take a moment"
+   },
+   "noContentExtracted": {
+      "description": "Error when extraction finds no readable content",
+      "message": "No file content could be read. Try refreshing the page."
+   },
+   "noFilesFound": {
+      "description": "Error when no files are detected in the workspace",
+      "message": "No files found. Make sure the code editor is open."
+   },
+   "officialSite": {
+      "description": "Footer link to official website",
+      "message": "เว็บไซต์ทางการ"
+   },
+   "openBase44First": {
+      "description": "Button label when user is not on a Base44 page",
+      "message": "เปิด Base44 ก่อน"
+   },
+   "openBase44ToContinue": {
+      "description": "Error message when on an unsupported page",
+      "message": "เปิดหน้าแอป Base44 เพื่อดำเนินการต่อ"
+   },
+   "openCodePage": {
+      "description": "Button label to navigate to the code workspace",
+      "message": "เปิดหน้าโค้ด"
+   },
+   "openingCodePage": {
+      "description": "Log message when navigating to the code page",
+      "message": "กำลังเปิดหน้าโค้ด..."
+   },
+   "pauseBtn": {
+      "description": "Pause button label for extraction progress controls",
+      "message": "Pause"
+   },
+   "preparingZip": {
+      "description": "Log message during ZIP file preparation",
+      "message": "กำลังเตรียมไฟล์ ZIP..."
+   },
+   "readyMessage": {
+      "description": "Initial log entry message",
+      "message": "พร้อมเมื่อคุณพร้อม"
+   },
+   "resumeBtn": {
+      "description": "Resume button label for extraction progress controls",
+      "message": "Resume"
+   },
+   "retryingExtraction": {
+      "description": "Loader text when falling back to content script extraction",
+      "message": "Retrying with fallback method..."
+   },
+   "reviewPromptBody": {
+      "description": "Body copy for the review prompt shown after successful exports",
+      "message": "A quick review on the Chrome Web Store helps more people discover it."
+   },
+   "reviewPromptCta": {
+      "description": "Primary CTA for the review prompt",
+      "message": "Leave a review"
+   },
+   "reviewPromptMeta": {
+      "description": "Meta text shown under the review prompt after the user reaches the export threshold",
+      "message": "Shown after $COUNT$ successful exports.",
+      "placeholders": {
+         "COUNT": {
+            "content": "$1",
+            "example": "3"
+         }
+      }
+   },
+   "reviewPromptNever": {
+      "description": "Action for permanently dismissing the review prompt",
+      "message": "Don't show again"
+   },
+   "reviewPromptNotNow": {
+      "description": "Secondary action for dismissing the review prompt temporarily",
+      "message": "Not now"
+   },
+   "reviewPromptTitle": {
+      "description": "Headline for the review prompt shown after successful exports",
+      "message": "Has Base44 been useful for you?"
+   },
+   "selectAll": {
+      "description": "Select all files button label",
+      "message": "All"
+   },
+   "selectFilesTitle": {
+      "description": "Title of the file selection panel",
+      "message": "Select files to export"
+   },
+   "showInlineButton": {
+      "description": "Toggle label to enable or disable the injected in-page export button",
+      "message": "Show inline button in Base44"
+   },
+   "startExport": {
+      "description": "Primary button label to start export",
+      "message": "เริ่มส่งออก"
+   },
+   "startingExtraction": {
+      "description": "Log message when extraction begins",
+      "message": "กำลังเริ่มขั้นตอนการแยกข้อมูล..."
+   },
+   "statusError": {
+      "description": "Status indicator on error",
+      "message": "ข้อผิดพลาด"
+   },
+   "statusExtracting": {
+      "description": "Status indicator during extraction",
+      "message": "กำลังแยกข้อมูล..."
+   },
+   "statusGoToCode": {
+      "description": "Status indicator when navigation to code page is needed",
+      "message": "ไปที่โค้ด"
+   },
+   "statusPaused": {
+      "description": "Status indicator when extraction is paused",
+      "message": "Paused"
+   },
+   "statusReady": {
+      "description": "Status indicator when extension is ready",
+      "message": "พร้อม"
+   },
+   "statusUnsupported": {
+      "description": "Status indicator for unsupported pages",
+      "message": "ไม่รองรับ"
+   },
+   "supportCta": {
+      "description": "Support CTA shown in the in-page completion toast",
+      "message": "Support the project"
+   },
+   "supportProject": {
+      "description": "Support link label in popup footer",
+      "message": "ซื้อกาแฟให้ฉันหน่อย"
+   },
+   "supportPrompt": {
+      "description": "Support prompt shown before the CTA in the in-page completion toast",
+      "message": "Did this help?"
+   },
+   "tipCleanImports": {
+      "description": "Tooltip for the clean imports toggle",
+      "message": "Makes the code work outside Base44 by fixing dependencies"
+   },
+   "tipCopyJsonOnly": {
+      "description": "Tooltip for the copy JSON only toggle",
+      "message": "Copies your code as text you can paste anywhere"
+   },
+   "tipGenerateZip": {
+      "description": "Tooltip for the generate ZIP toggle",
+      "message": "Downloads all your files in a single .zip folder"
+   },
+   "tipInlineButton": {
+      "description": "Tooltip for the inline button toggle",
+      "message": "Adds an export button right inside the Base44 page"
+   },
+   "unsupportedPage": {
+      "description": "Hero title for unsupported pages",
+      "message": "หน้าที่ไม่รองรับ"
+   },
+   "unsupportedPageDesc": {
+      "description": "Hero description for unsupported pages",
+      "message": "เปิดหน้าแอป Base44 เพื่อเปิดใช้งานการควบคุมการส่งออก"
+   },
+   "updates": {
+      "description": "Log container header",
+      "message": "อัปเดต"
+   },
+   "updatesCleared": {
+      "description": "Log message after clearing the updates log",
+      "message": "ล้างอัปเดตแล้ว"
+   },
+   "warningMessage": {
+      "description": "Warning modal message body",
+      "message": "การปิดหน้านี้จะทำให้สูญเสียความคืบหน้าการแยกข้อมูลทั้งหมด คุณแน่ใจหรือไม่ว่าต้องการออก?"
+   },
+   "warningTitle": {
+      "description": "Title of the warning modal when user tries to leave during extraction",
+      "message": "คำเตือน!"
+   },
+   "zipError": {
+      "description": "ZIP creation error message",
+      "message": "ไม่สามารถสร้าง ZIP: $ERROR$",
+      "placeholders": {
+         "ERROR": {
+            "content": "$1",
+            "example": "Out of memory"
+         }
+      }
+   },
+   "zipStarted": {
+      "description": "Log message when ZIP download begins",
+      "message": "เริ่มดาวน์โหลด ZIP โดยอัตโนมัติแล้ว"
+   },
+   "zipTurnedOff": {
+      "description": "Message when user tries to download ZIP but toggle is off",
+      "message": "การส่งออก ZIP ปิดอยู่ในขณะนี้"
+   }
+}

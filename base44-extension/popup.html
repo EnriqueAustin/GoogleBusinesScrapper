@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=380">
+  <title>Base44 Downloader</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container" style="visibility:hidden">
+    <header class="header">
+      <img src="icons/icon48.png" alt="Base44 Downloader logo" class="logo-box" />
+      <div class="title" data-i18n="brandName">Base44 Downloader</div>
+      <div class="header-row">
+        <span class="hero-title">app.base44.com</span>
+        <span class="status">
+          <span class="status-dot" id="status-dot"></span>
+          <span id="status-text" data-i18n="statusReady">Ready</span>
+        </span>
+      </div>
+    </header>
+
+    <div id="inline-notice" class="inline-notice" aria-live="polite"></div>
+
+    <section class="hero-card" style="display:none;">
+      <p class="hero-copy"></p>
+    </section>
+
+    <section class="controls" style="display:none;"></section>
+
+    <section class="card toggles">
+      <div class="option toggle-item" data-tip-i18n="tipInlineButton">
+        <span class="option-text toggle-label" data-i18n="showInlineButton">Inline button</span>
+        <label class="toggle"><input type="checkbox" id="inline-button-toggle"><span class="toggle-slider"></span></label>
+      </div>
+      <div class="option toggle-item" data-tip-i18n="tipCopyJsonOnly">
+        <span class="option-text toggle-label" data-i18n="copyJsonOnly">JSON only</span>
+        <label class="toggle"><input type="checkbox" id="copy-json-toggle"><span class="toggle-slider"></span></label>
+      </div>
+      <div class="option toggle-item" data-tip-i18n="tipGenerateZip">
+        <span class="option-text toggle-label" data-i18n="generateZip">Generate ZIP</span>
+        <label class="toggle"><input type="checkbox" id="gen-zip-toggle"><span class="toggle-slider"></span></label>
+      </div>
+      <div class="option toggle-item" data-tip-i18n="tipCleanImports">
+        <span class="option-text toggle-label" data-i18n="cleanImportLines">Clean imports</span>
+        <label class="toggle"><input type="checkbox" id="clean-imports-toggle"><span class="toggle-slider"></span></label>
+      </div>
+    </section>
+
+    <button id="start-btn" class="btn-cta">
+      <span class="btn-cta-shimmer" aria-hidden="true"></span>
+      <span class="btn-cta-content">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg>
+        <span id="start-btn-label" data-i18n="startExport">Start Export</span>
+      </span>
+    </button>
+
+    <footer class="footer">
+      <a id="official-site-link" href="https://base44downloader.vercel.app/" target="_blank" rel="noreferrer" data-i18n="officialSite">Official site</a>
+      <a id="donate-link" href="https://ko-fi.com/codewithfra" target="_blank" rel="noreferrer" class="support-link">
+        <span class="heart">&#9829;</span>
+        <span class="support-link-label" data-i18n="supportProject">Buy me a coffee</span>
+      </a>
+    </footer>
+  </div>
+
+  <!-- Hidden stubs: kept for JS compat -->
+  <button id="copy-json-btn" style="display:none" disabled></button>
+  <button id="download-zip-btn" style="display:none" disabled></button>
+  <div id="extraction-loader" style="display:none"><span id="loader-text"></span><span id="loader-sub"></span></div>
+  <div id="log-list" style="display:none"></div>
+  <div id="file-selection" style="display:none">
+    <div id="file-checklist"></div>
+    <span id="file-count-label"></span>
+    <button id="select-all-btn"></button>
+    <button id="deselect-all-btn"></button>
+    <button id="cancel-selection-btn"></button>
+    <button id="confirm-export-btn"></button>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

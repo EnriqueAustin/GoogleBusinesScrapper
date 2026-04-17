@@ -22,28 +22,51 @@ function setupDownloadListener(page, tempDir, timeoutMs) {
     // Ensure temp dir exists
     fs.ensureDirSync(tempDir);
 
-    return new Promise((resolve, reject) => {
-        const timer = setTimeout(() => {
-            reject(new Error(`Download timed out after ${timeout / 1000}s`));
-        }, timeout);
-
-        page.on('download', async (download) => {
-            clearTimeout(timer);
-
-            try {
-                const suggestedName = download.suggestedFilename();
-                const tempPath = path.join(tempDir, suggestedName);
-
-                logger.info(`Download started: ${suggestedName}`);
-                await download.saveAs(tempPath);
-                logger.info(`Download saved to temp: ${tempPath}`);
-
-                resolve(tempPath);
-            } catch (err) {
-                reject(new Error(`Download failed: ${err.message}`));
-            }
-        });
+    let downloadResolve, downloadReject;
+    const downloadPromise = new Promise((resolve, reject) => {
+        downloadResolve = resolve;
+        downloadReject = reject;
     });
+
+    let timer = null;
+    let finished = false;
+
+    page.on('download', async (download) => {
+        if (timer) clearTimeout(timer);
+        if (finished) return; // Prevent multiple resolutions
+
+        try {
+            const suggestedName = download.suggestedFilename();
+            const tempPath = path.join(tempDir, suggestedName);
+
+            logger.info(`Download started: ${suggestedName}`);
+            await download.saveAs(tempPath);
+            logger.info(`Download saved to temp: ${tempPath}`);
+
+            finished = true;
+            downloadResolve(tempPath);
+        } catch (err) {
+            finished = true;
+            downloadReject(new Error(`Download failed: ${err.message}`));
+        }
+    });
+
+    // Start timer explicitly when we are actually waiting for the download
+    downloadPromise.startTimer = () => {
+        if (!finished) {
+            timer = setTimeout(() => {
+                if (!finished) {
+                    finished = true;
+                    downloadReject(new Error(`Download timed out after ${timeout / 1000}s`));
+                }
+            }, timeout);
+        }
+    };
+
+    // Suppress UnhandledPromiseRejection if orchestrator catches an earlier error and abandons this promise
+    downloadPromise.catch(() => {});
+
+    return downloadPromise;
 }
 
 /**

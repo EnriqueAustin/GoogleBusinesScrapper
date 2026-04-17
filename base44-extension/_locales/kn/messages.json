@@ -1,0 +1,350 @@
+{
+   "base44Detected": {
+      "description": "Hero title when on a Base44 non-code page",
+      "message": "Base44 ಅಪ್ಲಿಕೇಶನ್ ಪತ್ತೆಯಾಗಿದೆ"
+   },
+   "base44DetectedDesc": {
+      "description": "Hero description when on a Base44 non-code page",
+      "message": "ಮೊದಲು ಕೋಡ್ ವರ್ಕ್‌ಸ್ಪೇಸ್ ತೆರೆಯಿರಿ, ನಂತರ ರಫ್ತು ಚಲಾಯಿಸಿ."
+   },
+   "brandName": {
+      "description": "Brand name shown in popup header",
+      "message": "Base44 Downloader"
+   },
+   "cancelBtn": {
+      "description": "Cancel button in warning modal",
+      "message": "ರದ್ದುಮಾಡಿ"
+   },
+   "cleanImportLines": {
+      "description": "Toggle label for clean imports option",
+      "message": "ಇಂಪೋರ್ಟ್ ಸಾಲುಗಳನ್ನು ಸ್ವಚ್ಛಗೊಳಿಸಿ"
+   },
+   "clearBtn": {
+      "description": "Button to clear the log",
+      "message": "ತೆರವುಗೊಳಿಸಿ"
+   },
+   "closeAnywayBtn": {
+      "description": "Close button in warning modal to proceed with leaving",
+      "message": "ಹೇಗಾದರೂ ಮುಚ್ಚಿ"
+   },
+   "closeBtn": {
+      "description": "Close button label",
+      "message": "Close"
+   },
+   "codeWorkspaceReady": {
+      "description": "Hero title when code workspace is ready for export",
+      "message": "ಕೋಡ್ ವರ್ಕ್‌ಸ್ಪೇಸ್ ಸಿದ್ಧವಾಗಿದೆ"
+   },
+   "copyJson": {
+      "description": "Button label to copy JSON to clipboard",
+      "message": "JSON ನಕಲಿಸಿ"
+   },
+   "copyJsonOnly": {
+      "description": "Toggle label for copy JSON option",
+      "message": "JSON ಮಾತ್ರ ನಕಲಿಸಿ"
+   },
+   "currentPage": {
+      "description": "Label above the current page hostname",
+      "message": "ಪ್ರಸ್ತುತ ಪುಟ"
+   },
+   "deselectAll": {
+      "description": "Deselect all files button label",
+      "message": "None"
+   },
+   "doneFoundFiles": {
+      "description": "Log message when extraction completes successfully",
+      "message": "ಮುಗಿಯಿತು. $COUNT$ ಫೈಲ್‌ಗಳು ಕಂಡುಬಂದವು.",
+      "placeholders": {
+         "COUNT": {
+            "content": "$1",
+            "example": "42"
+         }
+      }
+   },
+   "downloadZip": {
+      "description": "Button label to download ZIP file",
+      "message": "ZIP ಡೌನ್‌ಲೋಡ್ ಮಾಡಿ"
+   },
+   "exportCancelled": {
+      "description": "Log message when user cancels file selection",
+      "message": "Export cancelled."
+   },
+   "exportError": {
+      "description": "Generic export error message",
+      "message": "ರಫ್ತು ಮಾಡುವಾಗ ಏನೋ ತಪ್ಪಾಗಿದೆ."
+   },
+   "exportFailed": {
+      "description": "Export failure message with error details",
+      "message": "ರಫ್ತು ವಿಫಲವಾಯಿತು: $ERROR$",
+      "placeholders": {
+         "ERROR": {
+            "content": "$1",
+            "example": "Network error"
+         }
+      }
+   },
+   "exportPanel": {
+      "description": "Subtitle in popup header",
+      "message": "ರಫ್ತು ಪ್ಯಾನೆಲ್"
+   },
+   "exportSelected": {
+      "description": "Button label to export selected files",
+      "message": "Export Selected"
+   },
+   "exportSuccess": {
+      "description": "Notification message on successful export",
+      "message": "ರಫ್ತು ಯಶಸ್ವಿಯಾಗಿ ಪೂರ್ಣಗೊಂಡಿದೆ."
+   },
+   "exportSuccessJsonAndZip": {
+      "description": "Success detail when the export copies JSON and starts the ZIP download",
+      "message": "JSON copied and ZIP download started."
+   },
+   "exportSuccessJsonOnly": {
+      "description": "Success detail when the export only copies JSON",
+      "message": "JSON copied and ready to paste."
+   },
+   "exportSuccessPositive": {
+      "description": "Positive success headline shown in in-page completion toast",
+      "message": "Export completed successfully!"
+   },
+   "exportSuccessReady": {
+      "description": "Success detail when export completes without auto-copy or ZIP download",
+      "message": "Your export is ready."
+   },
+   "extDescription": {
+      "description": "Extension description shown in Chrome Web Store",
+      "message": "Base44 ಕೋಡ್ ವರ್ಕ್‌ಸ್ಪೇಸ್ ಫೈಲ್‌ಗಳನ್ನು ಒಂದು ಕ್ಲಿಕ್‌ನಲ್ಲಿ ಕ್ಲೀನ್ JSON ಅಥವಾ ZIP ಗೆ ರಫ್ತು ಮಾಡಿ, ಐಚ್ಛಿಕ ಇಂಪೋರ್ಟ್ ಕ್ಲೀನಪ್ ಮತ್ತು ಸ್ಥಳೀಯ-ಮಾತ್ರ ಪ್ರಕ್ರಿಯೆಯೊಂದಿಗೆ."
+   },
+   "extName": {
+      "description": "Extension name shown in Chrome Web Store and browser",
+      "message": "Base44 Downloader"
+   },
+   "extractionInProgress": {
+      "description": "Error when user tries to start a second export",
+      "message": "An export is already running. Please wait."
+   },
+   "filesSelected": {
+      "description": "File count label suffix in selection panel",
+      "message": "files selected"
+   },
+   "generateZip": {
+      "description": "Toggle label for generate ZIP option",
+      "message": "ZIP ರಚಿಸಿ"
+   },
+   "inlineBrandExporter": {
+      "description": "Brand label shown in injected in-page export button",
+      "message": "Base44 Exporter"
+   },
+   "inlineByline": {
+      "description": "Byline shown in the in-page export button pill",
+      "message": "by Base44Downloader"
+   },
+   "invalidAppId": {
+      "description": "Error message when app ID cannot be found in URL",
+      "message": "ಈ Base44 URL ಮಾನ್ಯ ಅಪ್ಲಿಕೇಶನ್ ಐಡಿಯನ್ನು ಒಳಗೊಂಡಿಲ್ಲ."
+   },
+   "jsonCopied": {
+      "description": "Log message when JSON is manually copied",
+      "message": "JSON ನಕಲಿಸಲಾಗಿದೆ."
+   },
+   "jsonCopiedAuto": {
+      "description": "Log message when JSON is auto-copied to clipboard",
+      "message": "JSON ಸ್ವಯಂಚಾಲಿತವಾಗಿ ನಕಲಿಸಲಾಗಿದೆ."
+   },
+   "loaderSubtitle": {
+      "description": "Subtitle shown below the loading spinner during extraction",
+      "message": "This may take a moment"
+   },
+   "noContentExtracted": {
+      "description": "Error when extraction finds no readable content",
+      "message": "No file content could be read. Try refreshing the page."
+   },
+   "noFilesFound": {
+      "description": "Error when no files are detected in the workspace",
+      "message": "No files found. Make sure the code editor is open."
+   },
+   "officialSite": {
+      "description": "Footer link to official website",
+      "message": "ಅಧಿಕೃತ ಸೈಟ್"
+   },
+   "openBase44First": {
+      "description": "Button label when user is not on a Base44 page",
+      "message": "ಮೊದಲು Base44 ತೆರೆಯಿರಿ"
+   },
+   "openBase44ToContinue": {
+      "description": "Error message when on an unsupported page",
+      "message": "ಮುಂದುವರಿಸಲು Base44 ಅಪ್ಲಿಕೇಶನ್ ಪುಟವನ್ನು ತೆರೆಯಿರಿ."
+   },
+   "openCodePage": {
+      "description": "Button label to navigate to the code workspace",
+      "message": "ಕೋಡ್ ಪುಟ ತೆರೆಯಿರಿ"
+   },
+   "openingCodePage": {
+      "description": "Log message when navigating to the code page",
+      "message": "ಕೋಡ್ ಪುಟ ತೆರೆಯಲಾಗುತ್ತಿದೆ..."
+   },
+   "pauseBtn": {
+      "description": "Pause button label for extraction progress controls",
+      "message": "Pause"
+   },
+   "preparingZip": {
+      "description": "Log message during ZIP file preparation",
+      "message": "ZIP ಫೈಲ್ ಸಿದ್ಧಪಡಿಸಲಾಗುತ್ತಿದೆ..."
+   },
+   "readyMessage": {
+      "description": "Initial log entry message",
+      "message": "ನೀವು ಸಿದ್ಧರಾದಾಗ."
+   },
+   "resumeBtn": {
+      "description": "Resume button label for extraction progress controls",
+      "message": "Resume"
+   },
+   "retryingExtraction": {
+      "description": "Loader text when falling back to content script extraction",
+      "message": "Retrying with fallback method..."
+   },
+   "reviewPromptBody": {
+      "description": "Body copy for the review prompt shown after successful exports",
+      "message": "A quick review on the Chrome Web Store helps more people discover it."
+   },
+   "reviewPromptCta": {
+      "description": "Primary CTA for the review prompt",
+      "message": "Leave a review"
+   },
+   "reviewPromptMeta": {
+      "description": "Meta text shown under the review prompt after the user reaches the export threshold",
+      "message": "Shown after $COUNT$ successful exports.",
+      "placeholders": {
+         "COUNT": {
+            "content": "$1",
+            "example": "3"
+         }
+      }
+   },
+   "reviewPromptNever": {
+      "description": "Action for permanently dismissing the review prompt",
+      "message": "Don't show again"
+   },
+   "reviewPromptNotNow": {
+      "description": "Secondary action for dismissing the review prompt temporarily",
+      "message": "Not now"
+   },
+   "reviewPromptTitle": {
+      "description": "Headline for the review prompt shown after successful exports",
+      "message": "Has Base44 been useful for you?"
+   },
+   "selectAll": {
+      "description": "Select all files button label",
+      "message": "All"
+   },
+   "selectFilesTitle": {
+      "description": "Title of the file selection panel",
+      "message": "Select files to export"
+   },
+   "showInlineButton": {
+      "description": "Toggle label to enable or disable the injected in-page export button",
+      "message": "Show inline button in Base44"
+   },
+   "startExport": {
+      "description": "Primary button label to start export",
+      "message": "ರಫ್ತು ಪ್ರಾರಂಭಿಸಿ"
+   },
+   "startingExtraction": {
+      "description": "Log message when extraction begins",
+      "message": "ಹೊರತೆಗೆಯುವ ಪ್ರಕ್ರಿಯೆ ಪ್ರಾರಂಭವಾಗುತ್ತಿದೆ..."
+   },
+   "statusError": {
+      "description": "Status indicator on error",
+      "message": "ದೋಷ"
+   },
+   "statusExtracting": {
+      "description": "Status indicator during extraction",
+      "message": "ಹೊರತೆಗೆಯಲಾಗುತ್ತಿದೆ..."
+   },
+   "statusGoToCode": {
+      "description": "Status indicator when navigation to code page is needed",
+      "message": "ಕೋಡ್‌ಗೆ ಹೋಗಿ"
+   },
+   "statusPaused": {
+      "description": "Status indicator when extraction is paused",
+      "message": "Paused"
+   },
+   "statusReady": {
+      "description": "Status indicator when extension is ready",
+      "message": "ಸಿದ್ಧ"
+   },
+   "statusUnsupported": {
+      "description": "Status indicator for unsupported pages",
+      "message": "ಬೆಂಬಲಿತವಲ್ಲ"
+   },
+   "supportCta": {
+      "description": "Support CTA shown in the in-page completion toast",
+      "message": "Support the project"
+   },
+   "supportProject": {
+      "description": "Support link label in popup footer",
+      "message": "ನನಗೆ ಕಾಫಿ ಖರೀದಿಸಿ"
+   },
+   "supportPrompt": {
+      "description": "Support prompt shown before the CTA in the in-page completion toast",
+      "message": "Did this help?"
+   },
+   "tipCleanImports": {
+      "description": "Tooltip for the clean imports toggle",
+      "message": "Makes the code work outside Base44 by fixing dependencies"
+   },
+   "tipCopyJsonOnly": {
+      "description": "Tooltip for the copy JSON only toggle",
+      "message": "Copies your code as text you can paste anywhere"
+   },
+   "tipGenerateZip": {
+      "description": "Tooltip for the generate ZIP toggle",
+      "message": "Downloads all your files in a single .zip folder"
+   },
+   "tipInlineButton": {
+      "description": "Tooltip for the inline button toggle",
+      "message": "Adds an export button right inside the Base44 page"
+   },
+   "unsupportedPage": {
+      "description": "Hero title for unsupported pages",
+      "message": "ಬೆಂಬಲಿತವಲ್ಲದ ಪುಟ"
+   },
+   "unsupportedPageDesc": {
+      "description": "Hero description for unsupported pages",
+      "message": "ರಫ್ತು ನಿಯಂತ್ರಣಗಳನ್ನು ಸಕ್ರಿಯಗೊಳಿಸಲು Base44 ಅಪ್ಲಿಕೇಶನ್ ಪುಟವನ್ನು ತೆರೆಯಿರಿ."
+   },
+   "updates": {
+      "description": "Log container header",
+      "message": "ನವೀಕರಣಗಳು"
+   },
+   "updatesCleared": {
+      "description": "Log message after clearing the updates log",
+      "message": "ನವೀಕರಣಗಳನ್ನು ತೆರವುಗೊಳಿಸಲಾಗಿದೆ."
+   },
+   "warningMessage": {
+      "description": "Warning modal message body",
+      "message": "ಈ ಪುಟವನ್ನು ಮುಚ್ಚಿದರೆ ಎಲ್ಲಾ ಹೊರತೆಗೆಯುವ ಪ್ರಗತಿ ಕಳೆದುಹೋಗುತ್ತದೆ. ನೀವು ಖಚಿತವಾಗಿ ಹೊರಡಲು ಬಯಸುವಿರಾ?"
+   },
+   "warningTitle": {
+      "description": "Title of the warning modal when user tries to leave during extraction",
+      "message": "ಎಚ್ಚರಿಕೆ!"
+   },
+   "zipError": {
+      "description": "ZIP creation error message",
+      "message": "ZIP ರಚಿಸಲಾಗಲಿಲ್ಲ: $ERROR$",
+      "placeholders": {
+         "ERROR": {
+            "content": "$1",
+            "example": "Out of memory"
+         }
+      }
+   },
+   "zipStarted": {
+      "description": "Log message when ZIP download begins",
+      "message": "ZIP ಡೌನ್‌ಲೋಡ್ ಸ್ವಯಂಚಾಲಿತವಾಗಿ ಪ್ರಾರಂಭವಾಯಿತು."
+   },
+   "zipTurnedOff": {
+      "description": "Message when user tries to download ZIP but toggle is off",
+      "message": "ZIP ರಫ್ತು ಪ್ರಸ್ತುತ ಆಫ್ ಆಗಿದೆ."
+   }
+}

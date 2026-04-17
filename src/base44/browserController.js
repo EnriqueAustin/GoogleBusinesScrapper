@@ -42,6 +42,9 @@ async function launchPersistentBrowser(opts = {}) {
  * Get extension path from extension ID (Chrome stores extensions here)
  */
 function getExtensionPath() {
+    if (base44Config.extensionPath) {
+        return base44Config.extensionPath;
+    }
     const path = require('path');
     // Chrome extensions live under the profile's Extensions folder
     // User may need to adjust — this is best-effort default
@@ -64,9 +67,28 @@ async function navigateToBase44(page) {
         timeout: base44Config.timeouts.navigation,
     });
 
+    logger.info('Waiting for Base44 to be ready (Please log in manually if prompted)...');
+    
+    try {
+        // Wait up to 5 minutes for a prompt textarea or "New Project" button to appear
+        // This gives the user plenty of time to log in on the first run
+        const readySelectors = [
+            'textarea',
+            'input[type="text"][placeholder*="describe"]',
+            'button:has-text("New")',
+            'button:has-text("Create Project")',
+            'a:has-text("New Project")',
+            '[data-testid="new-project"]'
+        ];
+        
+        await page.waitForSelector(readySelectors.join(', '), { state: 'visible', timeout: 300000 });
+        logger.info('Base44 authenticated and ready!');
+    } catch (err) {
+        logger.warn('Timed out waiting for login or ready state. Will try to proceed anyway.');
+    }
+
     // Wait for the page to settle
-    await page.waitForTimeout(3000);
-    logger.info('Base44 loaded');
+    await page.waitForTimeout(1000);
 }
 
 /**
@@ -223,38 +245,48 @@ async function waitForBuild(page, timeoutMs) {
     logger.info(`Waiting for build completion (timeout: ${timeout / 1000}s)...`);
 
     const startTime = Date.now();
+    let hasSeenLoading = false;
+    let consecutiveIdleChecks = 0;
+
+    // Give the UI a few seconds to transition to the "loading" state after clicking generate
+    await page.waitForTimeout(4000);
 
     while (Date.now() - startTime < timeout) {
-        // Check for completion indicators
-        const completionSelectors = [
-            // Common "done" indicators
-            'button:has-text("Download")',
-            'button:has-text("Export")',
-            'button:has-text("Preview")',
-            'button:has-text("View Site")',
-            'button:has-text("Open")',
-            '[data-testid="site-ready"]',
-            '.site-preview',
-            'iframe[src*="preview"]',
+        // 1. Check if still loading
+        const loadingSelectors = [
+            '.loading', '.spinner', '[data-testid="loading"]',
+            ':text("Building")', ':text("Generating")', ':text("Creating")',
+            ':text("Please wait")', 'svg.animate-spin'
         ];
 
-        for (const sel of completionSelectors) {
+        let stillLoading = false;
+        for (const sel of loadingSelectors) {
             try {
                 const el = page.locator(sel).first();
-                if (await el.isVisible({ timeout: 500 })) {
-                    const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
-                    logger.info(`Build complete! (${elapsed}s) — found: ${sel}`);
-                    return true;
+                if (await el.isVisible({ timeout: 300 })) {
+                    stillLoading = true;
+                    hasSeenLoading = true;
+                    consecutiveIdleChecks = 0; // reset
+                    break;
                 }
-            } catch { /* not visible yet */ }
+            } catch { /* not visible */ }
         }
 
-        // Check for error states
+        if (stillLoading) {
+            const elapsed = ((Date.now() - startTime) / 1000).toFixed(0);
+            logger.info(`Still building... (${elapsed}s)`);
+            await page.waitForTimeout(pollInterval);
+            continue; // Skip checking for completion, we know it's not done
+        }
+
+        // 2. Not loading. Increment idle counter.
+        consecutiveIdleChecks++;
+
+        // 3. Check for error states
         const errorSelectors = [
-            ':text("error")',
-            ':text("failed")',
             '.error-message',
             '[data-testid="error"]',
+            'text="Generation failed"'
         ];
 
         for (const sel of errorSelectors) {
@@ -269,26 +301,33 @@ async function waitForBuild(page, timeoutMs) {
             }
         }
 
-        // Check if still loading/building
-        const loadingSelectors = [
-            '.loading', '.spinner', '[data-testid="loading"]',
-            ':text("Building")', ':text("Generating")', ':text("Creating")',
-        ];
+        // 4. Check for strict completion indicators
+        if (consecutiveIdleChecks >= 2) {
+            const completionSelectors = [
+                'button:has-text("Download ZIP")',
+                'button:has-text("Download Code")',
+                '[data-testid="site-ready"]'
+            ];
 
-        let stillLoading = false;
-        for (const sel of loadingSelectors) {
-            try {
-                const el = page.locator(sel).first();
-                if (await el.isVisible({ timeout: 300 })) {
-                    stillLoading = true;
-                    break;
-                }
-            } catch { /* not visible */ }
-        }
-
-        if (stillLoading) {
-            const elapsed = ((Date.now() - startTime) / 1000).toFixed(0);
-            logger.info(`Still building... (${elapsed}s)`);
+            for (const sel of completionSelectors) {
+                try {
+                    const el = page.locator(sel).first();
+                    if (await el.isVisible({ timeout: 400 })) {
+                        const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+                        logger.info(`Build complete! (${elapsed}s) — found: ${sel}`);
+                        return true;
+                    }
+                } catch { /* not visible yet */ }
+            }
+            
+            // If we successfully saw a spinner and now it's gone for 2 consecutive cycles, it's done!
+            if (hasSeenLoading) {
+                const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+                logger.info(`Build complete! (${elapsed}s) — loading indicators vanished.`);
+                // Give it a final 2 seconds to render the download/export buttons in the DOM
+                await page.waitForTimeout(2000);
+                return true;
+            }
         }
 
         await page.waitForTimeout(pollInterval);

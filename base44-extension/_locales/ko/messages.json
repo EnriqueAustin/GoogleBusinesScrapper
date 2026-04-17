@@ -1,0 +1,350 @@
+{
+   "base44Detected": {
+      "description": "Hero title when on a Base44 non-code page",
+      "message": "Base44 앱 감지됨"
+   },
+   "base44DetectedDesc": {
+      "description": "Hero description when on a Base44 non-code page",
+      "message": "먼저 코드 워크스페이스를 연 다음 내보내기를 실행하세요."
+   },
+   "brandName": {
+      "description": "Brand name shown in popup header",
+      "message": "Base44 Downloader"
+   },
+   "cancelBtn": {
+      "description": "Cancel button in warning modal",
+      "message": "취소"
+   },
+   "cleanImportLines": {
+      "description": "Toggle label for clean imports option",
+      "message": "임포트 줄 정리"
+   },
+   "clearBtn": {
+      "description": "Button to clear the log",
+      "message": "지우기"
+   },
+   "closeAnywayBtn": {
+      "description": "Close button in warning modal to proceed with leaving",
+      "message": "그래도 닫기"
+   },
+   "closeBtn": {
+      "description": "Close button label",
+      "message": "Close"
+   },
+   "codeWorkspaceReady": {
+      "description": "Hero title when code workspace is ready for export",
+      "message": "코드 워크스페이스 준비 완료"
+   },
+   "copyJson": {
+      "description": "Button label to copy JSON to clipboard",
+      "message": "JSON 복사"
+   },
+   "copyJsonOnly": {
+      "description": "Toggle label for copy JSON option",
+      "message": "JSON만 복사"
+   },
+   "currentPage": {
+      "description": "Label above the current page hostname",
+      "message": "현재 페이지"
+   },
+   "deselectAll": {
+      "description": "Deselect all files button label",
+      "message": "None"
+   },
+   "doneFoundFiles": {
+      "description": "Log message when extraction completes successfully",
+      "message": "완료. $COUNT$개 파일을 찾았습니다.",
+      "placeholders": {
+         "COUNT": {
+            "content": "$1",
+            "example": "42"
+         }
+      }
+   },
+   "downloadZip": {
+      "description": "Button label to download ZIP file",
+      "message": "ZIP 다운로드"
+   },
+   "exportCancelled": {
+      "description": "Log message when user cancels file selection",
+      "message": "Export cancelled."
+   },
+   "exportError": {
+      "description": "Generic export error message",
+      "message": "내보내기 중 오류가 발생했습니다."
+   },
+   "exportFailed": {
+      "description": "Export failure message with error details",
+      "message": "내보내기 실패: $ERROR$",
+      "placeholders": {
+         "ERROR": {
+            "content": "$1",
+            "example": "Network error"
+         }
+      }
+   },
+   "exportPanel": {
+      "description": "Subtitle in popup header",
+      "message": "내보내기 패널"
+   },
+   "exportSelected": {
+      "description": "Button label to export selected files",
+      "message": "Export Selected"
+   },
+   "exportSuccess": {
+      "description": "Notification message on successful export",
+      "message": "내보내기가 성공적으로 완료되었습니다."
+   },
+   "exportSuccessJsonAndZip": {
+      "description": "Success detail when the export copies JSON and starts the ZIP download",
+      "message": "JSON copied and ZIP download started."
+   },
+   "exportSuccessJsonOnly": {
+      "description": "Success detail when the export only copies JSON",
+      "message": "JSON copied and ready to paste."
+   },
+   "exportSuccessPositive": {
+      "description": "Positive success headline shown in in-page completion toast",
+      "message": "Export completed successfully!"
+   },
+   "exportSuccessReady": {
+      "description": "Success detail when export completes without auto-copy or ZIP download",
+      "message": "Your export is ready."
+   },
+   "extDescription": {
+      "description": "Extension description shown in Chrome Web Store",
+      "message": "Base44 코드 워크스페이스 파일을 클린 JSON 또는 ZIP으로 원클릭 내보내기. 선택적 임포트 정리 및 로컬 전용 처리."
+   },
+   "extName": {
+      "description": "Extension name shown in Chrome Web Store and browser",
+      "message": "Base44 Downloader"
+   },
+   "extractionInProgress": {
+      "description": "Error when user tries to start a second export",
+      "message": "An export is already running. Please wait."
+   },
+   "filesSelected": {
+      "description": "File count label suffix in selection panel",
+      "message": "files selected"
+   },
+   "generateZip": {
+      "description": "Toggle label for generate ZIP option",
+      "message": "ZIP 생성"
+   },
+   "inlineBrandExporter": {
+      "description": "Brand label shown in injected in-page export button",
+      "message": "Base44 Exporter"
+   },
+   "inlineByline": {
+      "description": "Byline shown in the in-page export button pill",
+      "message": "by Base44Downloader"
+   },
+   "invalidAppId": {
+      "description": "Error message when app ID cannot be found in URL",
+      "message": "이 Base44 URL에 유효한 앱 ID가 포함되어 있지 않습니다."
+   },
+   "jsonCopied": {
+      "description": "Log message when JSON is manually copied",
+      "message": "JSON이 복사되었습니다."
+   },
+   "jsonCopiedAuto": {
+      "description": "Log message when JSON is auto-copied to clipboard",
+      "message": "JSON이 자동으로 복사되었습니다."
+   },
+   "loaderSubtitle": {
+      "description": "Subtitle shown below the loading spinner during extraction",
+      "message": "This may take a moment"
+   },
+   "noContentExtracted": {
+      "description": "Error when extraction finds no readable content",
+      "message": "No file content could be read. Try refreshing the page."
+   },
+   "noFilesFound": {
+      "description": "Error when no files are detected in the workspace",
+      "message": "No files found. Make sure the code editor is open."
+   },
+   "officialSite": {
+      "description": "Footer link to official website",
+      "message": "공식 사이트"
+   },
+   "openBase44First": {
+      "description": "Button label when user is not on a Base44 page",
+      "message": "먼저 Base44를 열어주세요"
+   },
+   "openBase44ToContinue": {
+      "description": "Error message when on an unsupported page",
+      "message": "계속하려면 Base44 앱 페이지를 열어주세요."
+   },
+   "openCodePage": {
+      "description": "Button label to navigate to the code workspace",
+      "message": "코드 페이지 열기"
+   },
+   "openingCodePage": {
+      "description": "Log message when navigating to the code page",
+      "message": "코드 페이지를 여는 중..."
+   },
+   "pauseBtn": {
+      "description": "Pause button label for extraction progress controls",
+      "message": "Pause"
+   },
+   "preparingZip": {
+      "description": "Log message during ZIP file preparation",
+      "message": "ZIP 파일을 준비하는 중..."
+   },
+   "readyMessage": {
+      "description": "Initial log entry message",
+      "message": "준비되면 시작하세요."
+   },
+   "resumeBtn": {
+      "description": "Resume button label for extraction progress controls",
+      "message": "Resume"
+   },
+   "retryingExtraction": {
+      "description": "Loader text when falling back to content script extraction",
+      "message": "Retrying with fallback method..."
+   },
+   "reviewPromptBody": {
+      "description": "Body copy for the review prompt shown after successful exports",
+      "message": "A quick review on the Chrome Web Store helps more people discover it."
+   },
+   "reviewPromptCta": {
+      "description": "Primary CTA for the review prompt",
+      "message": "Leave a review"
+   },
+   "reviewPromptMeta": {
+      "description": "Meta text shown under the review prompt after the user reaches the export threshold",
+      "message": "Shown after $COUNT$ successful exports.",
+      "placeholders": {
+         "COUNT": {
+            "content": "$1",
+            "example": "3"
+         }
+      }
+   },
+   "reviewPromptNever": {
+      "description": "Action for permanently dismissing the review prompt",
+      "message": "Don't show again"
+   },
+   "reviewPromptNotNow": {
+      "description": "Secondary action for dismissing the review prompt temporarily",
+      "message": "Not now"
+   },
+   "reviewPromptTitle": {
+      "description": "Headline for the review prompt shown after successful exports",
+      "message": "Has Base44 been useful for you?"
+   },
+   "selectAll": {
+      "description": "Select all files button label",
+      "message": "All"
+   },
+   "selectFilesTitle": {
+      "description": "Title of the file selection panel",
+      "message": "Select files to export"
+   },
+   "showInlineButton": {
+      "description": "Toggle label to enable or disable the injected in-page export button",
+      "message": "Show inline button in Base44"
+   },
+   "startExport": {
+      "description": "Primary button label to start export",
+      "message": "내보내기 시작"
+   },
+   "startingExtraction": {
+      "description": "Log message when extraction begins",
+      "message": "추출 시퀀스를 시작하는 중..."
+   },
+   "statusError": {
+      "description": "Status indicator on error",
+      "message": "오류"
+   },
+   "statusExtracting": {
+      "description": "Status indicator during extraction",
+      "message": "추출 중..."
+   },
+   "statusGoToCode": {
+      "description": "Status indicator when navigation to code page is needed",
+      "message": "코드로 이동"
+   },
+   "statusPaused": {
+      "description": "Status indicator when extraction is paused",
+      "message": "Paused"
+   },
+   "statusReady": {
+      "description": "Status indicator when extension is ready",
+      "message": "준비 완료"
+   },
+   "statusUnsupported": {
+      "description": "Status indicator for unsupported pages",
+      "message": "미지원"
+   },
+   "supportCta": {
+      "description": "Support CTA shown in the in-page completion toast",
+      "message": "Support the project"
+   },
+   "supportProject": {
+      "description": "Support link label in popup footer",
+      "message": "나에게 커피를 사다"
+   },
+   "supportPrompt": {
+      "description": "Support prompt shown before the CTA in the in-page completion toast",
+      "message": "Did this help?"
+   },
+   "tipCleanImports": {
+      "description": "Tooltip for the clean imports toggle",
+      "message": "Makes the code work outside Base44 by fixing dependencies"
+   },
+   "tipCopyJsonOnly": {
+      "description": "Tooltip for the copy JSON only toggle",
+      "message": "Copies your code as text you can paste anywhere"
+   },
+   "tipGenerateZip": {
+      "description": "Tooltip for the generate ZIP toggle",
+      "message": "Downloads all your files in a single .zip folder"
+   },
+   "tipInlineButton": {
+      "description": "Tooltip for the inline button toggle",
+      "message": "Adds an export button right inside the Base44 page"
+   },
+   "unsupportedPage": {
+      "description": "Hero title for unsupported pages",
+      "message": "미지원 페이지"
+   },
+   "unsupportedPageDesc": {
+      "description": "Hero description for unsupported pages",
+      "message": "내보내기 기능을 사용하려면 Base44 앱 페이지를 열어주세요."
+   },
+   "updates": {
+      "description": "Log container header",
+      "message": "업데이트"
+   },
+   "updatesCleared": {
+      "description": "Log message after clearing the updates log",
+      "message": "업데이트가 지워졌습니다."
+   },
+   "warningMessage": {
+      "description": "Warning modal message body",
+      "message": "이 페이지를 닫으면 모든 추출 진행 상황이 사라집니다. 정말 나가시겠습니까?"
+   },
+   "warningTitle": {
+      "description": "Title of the warning modal when user tries to leave during extraction",
+      "message": "경고!"
+   },
+   "zipError": {
+      "description": "ZIP creation error message",
+      "message": "ZIP을 생성할 수 없습니다: $ERROR$",
+      "placeholders": {
+         "ERROR": {
+            "content": "$1",
+            "example": "Out of memory"
+         }
+      }
+   },
+   "zipStarted": {
+      "description": "Log message when ZIP download begins",
+      "message": "ZIP 다운로드가 자동으로 시작되었습니다."
+   },
+   "zipTurnedOff": {
+      "description": "Message when user tries to download ZIP but toggle is off",
+      "message": "ZIP 내보내기가 현재 꺼져 있습니다."
+   }
+}
