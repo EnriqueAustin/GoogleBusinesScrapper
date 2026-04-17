@@ -121,7 +121,7 @@ export default function OverviewPage() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-        <Card className="col-span-4">
+        <Card className="md:col-span-2 lg:col-span-4">
           <CardHeader>
             <CardTitle>Top Categories</CardTitle>
             <CardDescription>
@@ -161,7 +161,7 @@ export default function OverviewPage() {
           </CardContent>
         </Card>
 
-        <Card className="col-span-3">
+        <Card className="md:col-span-2 lg:col-span-3">
           <CardHeader>
             <CardTitle>Website Status Ratio</CardTitle>
             <CardDescription>

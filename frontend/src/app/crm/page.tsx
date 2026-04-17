@@ -500,7 +500,7 @@ export default function CRMPage() {
                                 </div>
 
                                 {/* Contact Grid */}
-                                <div className="grid grid-cols-2 gap-3">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                     {currentLead.phone && (
                                         <a href={`tel:${currentLead.phone}`}
                                             className="flex items-center gap-2 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20 transition-colors group">

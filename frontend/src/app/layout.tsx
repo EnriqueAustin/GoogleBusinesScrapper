@@ -21,12 +21,12 @@ export default function RootLayout({
       <body className={`${inter.className} min-h-screen bg-background text-foreground flex flex-col`}>
         {/* Navigation Bar */}
         <nav className="border-b bg-card">
-          <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-            <div className="flex items-center gap-2 font-bold text-xl tracking-tight text-primary">
+          <div className="container mx-auto px-4 py-3 sm:py-0 sm:h-16 flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-0">
+            <div className="flex items-center gap-2 font-bold text-xl tracking-tight text-primary w-full justify-center sm:justify-start sm:w-auto shrink-0">
               <Activity className="w-6 h-6" />
               <span>GBS Platform</span>
             </div>
-            <div className="flex items-center gap-6">
+            <div className="flex items-center gap-4 sm:gap-6 overflow-x-auto w-full sm:w-auto no-scrollbar pb-1 sm:pb-0 px-2 sm:px-0">
               <Link href="/" className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-primary transition-colors">
                 <LayoutDashboard className="w-4 h-4" /> Overview
               </Link>
