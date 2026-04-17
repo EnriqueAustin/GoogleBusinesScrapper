@@ -537,8 +537,8 @@ export default function LeadsPage() {
                 </div>
             )}
 
-            {/* Data Table */}
-            <div className="rounded-md border bg-card overflow-x-auto">
+            {/* Data Table (Desktop) */}
+            <div className="hidden md:block rounded-md border bg-card overflow-x-auto">
                 <Table>
                     <TableHeader>
                         <TableRow>
@@ -667,6 +667,55 @@ export default function LeadsPage() {
                 </Table>
             </div>
 
+            {/* Mobile Cards (Mobile) */}
+            <div className="grid grid-cols-1 gap-3 md:hidden">
+                {loading ? (
+                    <div className="p-8 text-center text-muted-foreground border rounded-md">Loading leads...</div>
+                ) : leads.length === 0 ? (
+                    <div className="p-8 text-center text-muted-foreground border rounded-md">No leads found.</div>
+                ) : (
+                    leads.map(lead => (
+                        <Card key={lead.id} className={`overflow-hidden ${selectedLeadIds.has(lead.id) ? 'ring-2 ring-primary' : ''}`}>
+                            <div className="p-3 border-b flex justify-between items-start gap-2 bg-muted/20">
+                                <div className="flex gap-2 items-start">
+                                    <Checkbox checked={selectedLeadIds.has(lead.id)} onCheckedChange={() => toggleSelectLead(lead.id)} className="mt-1" />
+                                    <div>
+                                        <h3 className="font-bold text-sm leading-tight">{lead.name}</h3>
+                                        <p className="text-xs text-muted-foreground">{lead.category || "No Category"}</p>
+                                    </div>
+                                </div>
+                                <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => openLeadDetail(lead)} title="View Details">
+                                    <Eye className="h-4 w-4 text-primary" />
+                                </Button>
+                            </div>
+                            <div className="p-3 grid gap-2">
+                                <div className="flex flex-wrap gap-2 items-center">
+                                    <StatusBadge status={lead.crmStatus} />
+                                    {lead.siteStatus !== "none" && <SiteStatusBadge status={lead.siteStatus} />}
+                                    <ScoreBadge score={lead.leadScore} />
+                                </div>
+                                <div className="flex gap-4 text-xs mt-1">
+                                    {lead.phone && (
+                                        <a href={`tel:${lead.phone}`} className="flex items-center gap-1 text-muted-foreground hover:text-emerald-400">
+                                            <Phone className="h-3 w-3" /> Call
+                                        </a>
+                                    )}
+                                    {lead.website && lead.website !== "None" && (
+                                        <a href={lead.website} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-muted-foreground hover:text-blue-400">
+                                            <Globe className="h-3 w-3" /> Web
+                                        </a>
+                                    )}
+                                    <span className="flex items-center gap-1 text-muted-foreground ml-auto">
+                                        <Star className="h-3 w-3 text-amber-400 fill-amber-400" />
+                                        {lead.rating || "—"}
+                                    </span>
+                                </div>
+                            </div>
+                        </Card>
+                    ))
+                )}
+            </div>
+
             {/* Pagination */}
             <div className="flex flex-col sm:flex-row justify-between items-center gap-2 text-sm text-muted-foreground">
                 <span>Showing {(page - 1) * 50 + (leads.length > 0 ? 1 : 0)} – {(page - 1) * 50 + leads.length} of {totalLeads}</span>
@@ -679,7 +728,7 @@ export default function LeadsPage() {
 
             {/* ── Lead Detail Modal ──────────────────────────────────── */}
             <Dialog open={!!selectedLead} onOpenChange={open => !open && setSelectedLead(null)}>
-                <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto p-4 sm:p-6 w-[95vw] sm:w-full">
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2">
                             {selectedLead?.name}

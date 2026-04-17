@@ -336,7 +336,7 @@ export default function CRMPage() {
     const totalActive = stats ? (Number(stats.new || 0) + Number(stats.attempting || 0) + Number(stats.connected || 0) + Number(stats.qualified || 0)) : 0;
 
     return (
-        <div className="p-6 max-w-[1600px] mx-auto space-y-6 min-h-screen">
+        <div className="p-3 sm:p-6 max-w-[1600px] mx-auto space-y-4 sm:space-y-6 min-h-screen">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
