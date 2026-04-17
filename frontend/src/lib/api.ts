@@ -5,6 +5,9 @@ import axios, { AxiosError } from "axios";
  * 
  * On startup, the backend (port 3001) may not be ready yet.  Instead of
  * spamming console errors the client silently retries with exponential
+ * backoff for transient network failures (connection refused / reset).
+ */
+
 // If in browser, use relative paths so Next.js rewrites can proxy to backend (bypasses Windows Firewall).
 // If on server (SSR), hit backend directly.
 const API_BASE = typeof window !== "undefined" 
