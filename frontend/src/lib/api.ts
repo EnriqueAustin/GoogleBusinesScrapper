@@ -8,7 +8,9 @@ import axios, { AxiosError } from "axios";
  * backoff for transient network failures (connection refused / reset).
  */
 
-const API_BASE = "http://localhost:3001";
+const API_BASE = typeof window !== "undefined" 
+    ? `${window.location.protocol}//${window.location.hostname}:3001`
+    : "http://localhost:3001";
 
 const api = axios.create({
     baseURL: API_BASE,
