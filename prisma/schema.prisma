@@ -36,11 +36,17 @@ model Lead {
 
   // CRM Sales Pipeline Fields
   crmStatus          String   @default("new")     // new | attempting | connected | qualified | disqualified | closed_won | closed_lost
+  pipelineId         String?
+  pipeline           Pipeline? @relation(fields: [pipelineId], references: [id], onDelete: SetNull)
+  stageId            String?
+  stage              Stage?    @relation(fields: [stageId], references: [id], onDelete: SetNull)
+  winProbability     Int?      @default(0)
+  dealValue          Float?    @map("estimatedValue")
+
   callCount          Int      @default(0)
   lastCalledAt       DateTime?
   nextFollowUp       DateTime?
   qualificationNotes String?
-  estimatedValue     Float?
   setupFee           Float?
   monthlyFee         Float?
   websitePainPoints  String?
@@ -48,7 +54,8 @@ model Lead {
 
   // Relations
   logs          LeadLog[]
-  calls         CallLog[]
+  calls         CallLog[] // @deprecated - migrating to activities
+  activities    Activity[]
 
   @@unique([name, address])
   @@index([hasWebsite])
@@ -58,6 +65,8 @@ model Lead {
   @@index([leadScore])
   @@index([city])
   @@index([crmStatus])
+  @@index([pipelineId])
+  @@index([stageId])
   @@index([nextFollowUp])
   @@index([siteStatus])
 }
@@ -76,6 +85,7 @@ model LeadLog {
 }
 
 model CallLog {
+  // @deprecated - use Activity instead
   id        Int      @id @default(autoincrement())
   leadId    Int
   lead      Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
@@ -86,6 +96,26 @@ model CallLog {
   createdAt DateTime @default(now())
 
   @@index([leadId])
+}
+
+model Activity {
+  id          String   @id @default(uuid())
+  leadId      Int
+  lead        Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  type        String   @default("call") // call | email | note | meeting | system
+  outcome     String?  // e.g. answered, voicemail, etc.
+  notes       String?
+  duration    Int?     // seconds
+  dueDate     DateTime?
+  assignedTo  String?  // For future multi-user
+  isDone      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([leadId])
+  @@index([type])
+  @@index([dueDate])
+  @@index([isDone])
 }
 
 model Query {
@@ -120,4 +150,30 @@ model DemoJob {
   inputData   Json
   createdAt   DateTime  @default(now())
   completedAt DateTime?
+}
+
+model Pipeline {
+  id        String   @id @default(uuid())
+  name      String
+  isDefault Boolean  @default(false)
+  stages    Stage[]
+  leads     Lead[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Stage {
+  id             String   @id @default(uuid())
+  name           String
+  order          Int
+  winProbability Int      @default(0) // 0-100 percentage
+  color          String   @default("#94a3b8") // Default slate/grey hex
+  pipelineId     String
+  pipeline       Pipeline @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
+  leads          Lead[]
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([pipelineId])
+  @@index([order])
 }

@@ -16,8 +16,13 @@ import {
     Calendar, MessageSquare, RefreshCw, Target, Zap, X,
     Users, Trophy, Ban, Activity, ArrowRight, Voicemail,
     ThumbsUp, ThumbsDown, SkipForward, Filter, StickyNote,
-    Globe, Hammer, Download, Search
+    Globe, Hammer, Download, Search, LayoutGrid, List
 } from "lucide-react";
+import PipelineSelector from "@/components/crm/PipelineSelector";
+import KanbanBoard from "@/components/crm/KanbanBoard";
+import PipelineEditorModal from "@/components/crm/PipelineEditorModal";
+import ActivityTimeline from "@/components/crm/ActivityTimeline";
+import LogCallModal from "@/components/crm/LogCallModal";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -146,7 +151,7 @@ function parseCurrencyInput(value: string): number | null {
 
 // ── Main Component ─────────────────────────────────────────────────────────────
 
-function CRMPageContent() {
+function CRMListView({ pipelineId }: { pipelineId: string | null }) {
     const searchParams = useSearchParams();
     const targetLeadId = searchParams.get("leadId");
     const hasNavigatedToTarget = useRef(false);
@@ -193,12 +198,13 @@ function CRMPageContent() {
             const params = new URLSearchParams({ status: queueFilter, minScore, limit: "100" });
             if (siteStatusFilter !== "all") params.set("siteStatus", siteStatusFilter);
             if (searchTerm) params.set("search", searchTerm);
+            if (pipelineId) params.set("pipelineId", pipelineId);
             const data = await apiGet(`${API}/crm/queue?${params}`);
             setQueue(data);
             setQueueIdx(0);
         } catch { /* ignore */ }
         finally { setLoading(false); }
-    }, [queueFilter, minScore, siteStatusFilter, searchTerm]);
+    }, [queueFilter, minScore, siteStatusFilter, searchTerm, pipelineId]);
 
     // Navigate to a specific lead when arriving from the Leads page via ?leadId=
     useEffect(() => {
@@ -257,16 +263,6 @@ function CRMPageContent() {
     };
 
     const openCallModal = () => {
-        const out = CALL_OUTCOMES.find(o => o.suggestedStatus === currentLead?.crmStatus);
-        setCallOutcome("");
-        setCallNotes("");
-        setCallDuration("");
-        setFollowUpDate("");
-        setActivityType("call");
-        setSetupFee(currentLead?.setupFee != null ? currentLead.setupFee.toString() : "");
-        setMonthlyFee(currentLead?.monthlyFee != null ? currentLead.monthlyFee.toString() : "");
-        setManualValue(currentLead?.estimatedValue != null ? currentLead.estimatedValue.toString() : "");
-        setOverrideStatus(currentLead?.crmStatus || "attempting");
         setShowCallModal(true);
     };
 
@@ -702,39 +698,24 @@ function CRMPageContent() {
                         </div>
                     )}
 
-                    {/* Call History Panel */}
+                    {/* Call History / Activity Timeline Panel */}
                     {showHistoryPanel && currentLead && (
                         <div className="rounded-xl border bg-card p-4 space-y-3">
-                            <h3 className="text-sm font-semibold flex items-center gap-2">
-                                <Activity className="h-4 w-4 text-primary" /> Call History — {currentLead.name}
-                            </h3>
-                            {callLogs.length === 0 ? (
-                                <p className="text-xs text-muted-foreground py-4 text-center">No calls logged yet.</p>
-                            ) : (
-                                <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
-                                    {callLogs.map(log => {
-                                        const outInfo = getOutcomeInfo(log.outcome);
-                                        return (
-                                            <div key={log.id} className="flex gap-3 p-2.5 rounded-lg bg-muted/40 text-xs">
-                                                {outInfo && <outInfo.icon className={`h-4 w-4 ${outInfo.color} shrink-0 mt-0.5`} />}
-                                                <div className="flex-1 min-w-0">
-                                                    <div className="flex justify-between gap-2">
-                                                        <span className={`font-medium capitalize ${outInfo?.color}`}>{outInfo?.label ?? log.outcome}</span>
-                                                        <span className="text-muted-foreground shrink-0">
-                                                            {formatDistanceToNow(new Date(log.createdAt), { addSuffix: true })}
-                                                        </span>
-                                                    </div>
-                                                    {log.notes && <p className="text-muted-foreground mt-0.5 truncate">{log.notes}</p>}
-                                                    {log.duration && <p className="text-muted-foreground">{Math.floor(log.duration / 60)}m {log.duration % 60}s</p>}
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            )}
+                            <ActivityTimeline leadId={currentLead.id} triggerRefresh={stats?.totalCalls} />
                         </div>
                     )}
                 </div>
+
+                <LogCallModal 
+                    isOpen={showCallModal} 
+                    onClose={() => setShowCallModal(false)} 
+                    leadId={currentLead?.id || 0} 
+                    onLogged={() => {
+                        fetchStats();
+                        fetchQueue();
+                        setQueueIdx(i => Math.min(i + 1, queue.length - 1));
+                    }} 
+                />
 
                 {/* ── Pipeline Funnel + Leaderboard ─────────────────────────── */}
                 <div className="lg:col-span-2 space-y-4">
@@ -835,172 +816,74 @@ function CRMPageContent() {
                 </div>
             </div>
 
-            {/* ── Call Logger Modal ─────────────────────────────────────────── */}
-            <Dialog open={showCallModal} onOpenChange={open => !open && setShowCallModal(false)}>
-                <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-                    <DialogHeader>
-                        <DialogTitle className="flex items-center gap-2">
-                            <Activity className="h-5 w-5 text-primary" />
-                            Log Activity — {currentLead?.name}
-                        </DialogTitle>
-                    </DialogHeader>
 
-                    <div className="space-y-4 pt-1">
-                        {/* Activity Type Selector */}
-                        <div className="flex bg-muted p-1 rounded-lg">
-                            {["call", "email", "note"].map((type) => (
-                                <button key={type} onClick={() => setActivityType(type)}
-                                    className={`flex-1 text-xs py-1.5 capitalize rounded-md transition-colors ${activityType === type ? "bg-background shadow font-medium" : "text-muted-foreground hover:text-foreground"}`}>
-                                    {type}
-                                </button>
-                            ))}
-                        </div>
-
-                        {/* Outcome Selector */}
-                        <div className="space-y-2">
-                            <label className="text-xs font-medium text-muted-foreground">Activity Outcome *</label>
-                            <div className="grid grid-cols-2 gap-2">
-                                {CALL_OUTCOMES.map(({ key, label, icon: Icon, color }) => (
-                                    <button key={key}
-                                        onClick={() => handleOutcomeSelect(key)}
-                                        className={`flex items-center gap-2 p-2.5 rounded-lg border text-sm transition-all text-left ${callOutcome === key
-                                            ? `border-primary bg-primary/10 ${color} font-medium ring-1 ring-primary/40`
-                                            : "border-border hover:border-primary/30 hover:bg-muted/50"
-                                            }`}>
-                                        <Icon className={`h-4 w-4 shrink-0 ${callOutcome === key ? color : "text-muted-foreground"}`} />
-                                        {label}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-
-                        {/* Update Status */}
-                        {callOutcome && (
-                            <div className="space-y-2">
-                                <label className="text-xs font-medium text-muted-foreground">Update Lead Status To</label>
-                                <div className="flex flex-wrap gap-1.5">
-                                    {CRM_STATUSES.filter(s => !["closed_won", "closed_lost"].includes(s.key)).map(({ key, label, color, bg, border }) => (
-                                        <button key={key}
-                                            onClick={() => setOverrideStatus(key)}
-                                            className={`px-2.5 py-1 rounded-full text-xs border transition-all ${overrideStatus === key ? `${bg} ${color} ${border} font-medium ring-1 ring-primary/30` : "border-border text-muted-foreground hover:border-primary/30"}`}>
-                                            {label}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Notes */}
-                        <div className="space-y-2">
-                            <label className="text-xs font-medium text-muted-foreground">Call Notes</label>
-                            <textarea
-                                value={callNotes}
-                                onChange={e => setCallNotes(e.target.value)}
-                                placeholder="What was discussed? Key objections, interest level, next steps..."
-                                className="w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm min-h-[80px] resize-none focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                            />
-                        </div>
-
-                        {/* Duration + Follow-up */}
-                        <div className="grid grid-cols-2 gap-3">
-                            <div className="space-y-1.5">
-                                <label className="text-xs font-medium text-muted-foreground">Duration (minutes)</label>
-                                <Input type="number" value={callDuration} onChange={e => setCallDuration(e.target.value)}
-                                    placeholder="e.g. 5" className="h-8 text-sm" />
-                            </div>
-                            <div className="space-y-1.5">
-                                <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
-                                    <Calendar className="h-3 w-3" /> Follow-up Date
-                                </label>
-                                <Input type="date" value={followUpDate} onChange={e => setFollowUpDate(e.target.value)}
-                                    className="h-8 text-sm" />
-                            </div>
-                        </div>
-
-                        {/* Deal Revenue */}
-                        {(overrideStatus === "qualified" || overrideStatus === "connected" || overrideStatus === "closed_won") && (
-                            <div className="space-y-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-3">
-                                <label className="text-xs font-medium text-emerald-500 font-bold flex items-center gap-1">
-                                    <Target className="h-3 w-3" /> Revenue Model
-                                </label>
-                                <div className="grid grid-cols-2 gap-3">
-                                    <div className="space-y-1.5">
-                                        <label className="text-xs font-medium text-muted-foreground">Setup Fee (R)</label>
-                                        <Input
-                                            type="number"
-                                            value={setupFee}
-                                            onChange={e => { setSetupFee(e.target.value); setManualValue(""); }}
-                                            placeholder="e.g. 2500"
-                                            className="h-8 text-sm border-emerald-500/30 bg-background/70 focus-visible:ring-emerald-500"
-                                        />
-                                    </div>
-                                    <div className="space-y-1.5">
-                                        <label className="text-xs font-medium text-muted-foreground">Monthly Fee (R)</label>
-                                        <Input
-                                            type="number"
-                                            value={monthlyFee}
-                                            onChange={e => { setMonthlyFee(e.target.value); setManualValue(""); }}
-                                            placeholder="e.g. 499"
-                                            className="h-8 text-sm border-emerald-500/30 bg-background/70 focus-visible:ring-emerald-500"
-                                        />
-                                    </div>
-                                    <div className="space-y-1.5 col-span-2">
-                                        <label className="text-xs font-medium text-muted-foreground">Or One Big Price / Total (R)</label>
-                                        <Input
-                                            type="number"
-                                            value={manualValue}
-                                            onChange={e => { setManualValue(e.target.value); setSetupFee(""); setMonthlyFee(""); }}
-                                            placeholder="e.g. 15000"
-                                            className="h-8 text-sm border-emerald-500/30 bg-background/70 focus-visible:ring-emerald-500"
-                                        />
-                                    </div>
-                                </div>
-                                <div className="rounded-lg border border-emerald-500/20 bg-background/60 px-3 py-2">
-                                    <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Estimated Total Value</p>
-                                    <p className="text-sm font-semibold text-emerald-500">
-                                        {liveEstimatedValue == null ? "Not set" : `R${liveEstimatedValue.toLocaleString()}`}
-                                    </p>
-                                    <p className="text-[11px] text-muted-foreground">Calculated as setup fee + 12 months of recurring revenue.</p>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Qual notes */}
-                        <div className="space-y-1.5">
-                            <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
-                                <StickyNote className="h-3 w-3" /> Update Qualification Notes
-                            </label>
-                            <textarea
-                                value={qualNotes}
-                                onChange={e => setQualNotes(e.target.value)}
-                                placeholder="Append qualification intel..."
-                                className="w-full rounded-lg border border-input bg-transparent px-3 py-2 text-xs min-h-[52px] resize-none focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                            />
-                        </div>
-
-                        {/* Actions */}
-                        <div className="flex justify-end gap-2 pt-1">
-                            <Button variant="ghost" onClick={() => setShowCallModal(false)}>Cancel</Button>
-                            <Button onClick={submitCall} disabled={!callOutcome || savingCall}
-                                className="gap-2 bg-primary hover:bg-primary/90">
-                                {savingCall ? <><RefreshCw className="h-4 w-4 animate-spin" /> Saving...</> : <><CheckCircle2 className="h-4 w-4" /> Save & Next Lead</>}
-                            </Button>
-                        </div>
-                    </div>
-                </DialogContent>
-            </Dialog>
         </div>
     );
 }
 
 export default function CRMPage() {
+    const [pipelines, setPipelines] = useState<any[]>([]);
+    const [activePipeline, setActivePipeline] = useState<string | null>(null);
+    const [viewMode, setViewMode] = useState<'kanban' | 'list'>('kanban');
+    const [showEditor, setShowEditor] = useState(false);
+
+    useEffect(() => {
+        apiGet('/api/pipelines')
+            .then(data => {
+                setPipelines(data);
+                const defaultPipe = data.find((p: any) => p.isDefault) || data[0];
+                if (defaultPipe) setActivePipeline(defaultPipe.id);
+            });
+    }, []);
+
     return (
-        <Suspense fallback={
-            <div className="p-12 flex items-center justify-center text-muted-foreground">
-                <RefreshCw className="h-6 w-6 animate-spin mr-2" /> Loading CRM...
+        <div className="flex flex-col h-[calc(100vh-64px)] overflow-hidden bg-background">
+            <div className="flex justify-between items-center bg-card p-4 border-b border-border shrink-0 z-10 shadow-sm">
+                <PipelineSelector 
+                    pipelines={pipelines} 
+                    activeId={activePipeline} 
+                    onChange={setActivePipeline} 
+                    onEdit={() => setShowEditor(true)}
+                />
+                <div className="flex space-x-2">
+                    <Button 
+                        variant={viewMode === 'kanban' ? 'default' : 'outline'} 
+                        onClick={() => setViewMode('kanban')}
+                        size="sm"
+                    >
+                        <LayoutGrid className="w-4 h-4 mr-2" /> Board
+                    </Button>
+                    <Button 
+                        variant={viewMode === 'list' ? 'default' : 'outline'} 
+                        onClick={() => setViewMode('list')}
+                        size="sm"
+                    >
+                        <List className="w-4 h-4 mr-2" /> Queue List
+                    </Button>
+                </div>
             </div>
-        }>
-            <CRMPageContent />
-        </Suspense>
+
+            <div className="flex-1 overflow-y-auto">
+                {viewMode === 'kanban' && activePipeline ? (
+                    <div className="p-6 h-full">
+                        <KanbanBoard pipelineId={activePipeline} />
+                    </div>
+                ) : (
+                    <Suspense fallback={
+                        <div className="p-12 flex items-center justify-center text-muted-foreground">
+                            <RefreshCw className="h-6 w-6 animate-spin mr-2" /> Loading CRM...
+                        </div>
+                    }>
+                        <CRMListView pipelineId={activePipeline} />
+                    </Suspense>
+                )}
+            </div>
+
+            <PipelineEditorModal 
+                isOpen={showEditor} 
+                onClose={() => setShowEditor(false)} 
+                pipelineId={activePipeline} 
+            />
+        </div>
     );
 }

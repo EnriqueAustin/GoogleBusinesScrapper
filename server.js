@@ -867,7 +867,7 @@ app.get('/api/crm/analytics', async (req, res) => {
         // 1. Pipeline Value grouping by status
         const pipelineValue = await prisma.lead.groupBy({
             by: ['crmStatus'],
-            _sum: { estimatedValue: true },
+            _sum: { dealValue: true },
             _count: { id: true },
             where: {
                 crmStatus: { notIn: ['disqualified', 'closed_lost'] }
@@ -888,18 +888,26 @@ app.get('/api/crm/analytics', async (req, res) => {
 });
 
 /**
- * GET /api/crm/tasks — targeted follow-up tasks
+ * GET /api/crm/tasks — targeted follow-up tasks (Activities)
  */
 app.get('/api/crm/tasks', async (req, res) => {
     try {
-        const tasks = await prisma.lead.findMany({
+        // Fetch tasks (Activities with due dates) that are not done, due today or overdue
+        const endOfToday = new Date();
+        endOfToday.setHours(23, 59, 59, 999);
+
+        const tasks = await prisma.activity.findMany({
             where: {
-                nextFollowUp: { lte: new Date(new Date().setHours(23, 59, 59, 999)) },
-                crmStatus: { notIn: ['closed_won', 'closed_lost', 'disqualified'] }
+                dueDate: { lte: endOfToday },
+                isDone: false
+            },
+            include: {
+                lead: {
+                    select: { id: true, name: true, stageId: true, pipelineId: true }
+                }
             },
             orderBy: [
-                { nextFollowUp: 'asc' },
-                { leadScore: 'desc' }
+                { dueDate: 'asc' }
             ],
             take: 100
         });
@@ -916,11 +924,15 @@ app.get('/api/crm/tasks', async (req, res) => {
  */
 app.get('/api/crm/queue', async (req, res) => {
     try {
-        const { status = 'all', minScore = '0', limit = '50', siteStatus, search } = req.query;
+        const { status = 'all', minScore = '0', limit = '50', siteStatus, search, pipelineId } = req.query;
 
         const where = {
             leadScore: { gte: parseInt(minScore) || 0 },
         };
+
+        if (pipelineId) {
+            where.pipelineId = pipelineId;
+        }
 
         if (status !== 'all') {
             where.crmStatus = status;
@@ -1002,11 +1014,11 @@ app.patch('/api/leads/:id/crm', async (req, res) => {
             const effectiveMonthlyFee = monthlyFeeProvided ? parsedMonthlyFee : existing.monthlyFee;
             
             if (parsedEstimatedValue !== undefined && parsedEstimatedValue !== null) {
-                data.estimatedValue = parsedEstimatedValue;
+                data.dealValue = parsedEstimatedValue;
             } else if (effectiveSetupFee != null || effectiveMonthlyFee != null) {
-                data.estimatedValue = (effectiveSetupFee || 0) + ((effectiveMonthlyFee || 0) * 12);
+                data.dealValue = (effectiveSetupFee || 0) + ((effectiveMonthlyFee || 0) * 12);
             } else {
-                data.estimatedValue = null;
+                data.dealValue = null;
             }
         }
 
@@ -1045,67 +1057,122 @@ app.patch('/api/leads/:id/crm', async (req, res) => {
     }
 });
 
+const ActivitySchema = require('zod').z.object({
+    type: require('zod').z.enum(['call', 'email', 'note', 'meeting', 'system']).default('call'),
+    outcome: require('zod').z.string().optional().nullable(),
+    notes: require('zod').z.string().optional().nullable(),
+    duration: require('zod').z.number().optional().nullable(),
+    dueDate: require('zod').z.string().optional().nullable(),
+    isDone: require('zod').z.boolean().optional(),
+});
+
 /**
- * POST /api/leads/:id/calls — log a call for a lead
+ * POST /api/leads/:id/activities — log an activity for a lead
  */
-app.post('/api/leads/:id/calls', async (req, res) => {
+app.post('/api/leads/:id/activities', async (req, res) => {
     try {
         const leadId = parseInt(req.params.id);
-        const { type = 'call', outcome, notes, duration, crmStatus } = req.body;
-
-        if (!outcome) return res.status(400).json({ error: 'Missing outcome' });
+        const parsed = ActivitySchema.safeParse(req.body);
+        
+        if (!parsed.success) {
+            return res.status(400).json({ error: 'Invalid data', details: parsed.error });
+        }
+        
+        const { type, outcome, notes, duration, dueDate, isDone } = parsed.data;
 
         const existing = await prisma.lead.findUnique({ where: { id: leadId } });
         if (!existing) return res.status(404).json({ error: 'Lead not found' });
 
-        // Create call log / activity
-        const callLog = await prisma.callLog.create({
-            data: { leadId, type, outcome, notes: notes || null, duration: duration || null }
+        // Create activity
+        const activity = await prisma.activity.create({
+            data: { 
+                leadId, 
+                type, 
+                outcome, 
+                notes: notes || null, 
+                duration: duration || null,
+                dueDate: dueDate ? new Date(dueDate) : null,
+                isDone: isDone || false
+            }
         });
 
-        // Update lead: increment activity count, set lastCalledAt, optionally update crmStatus
+        // Update lead: increment activity count, set lastCalledAt
         const updateData = {
             callCount: { increment: type === 'call' ? 1 : 0 },
             ...(type === 'call' ? { lastCalledAt: new Date() } : {}),
+            ...(dueDate ? { nextFollowUp: new Date(dueDate) } : {})
         };
-        if (crmStatus) updateData.crmStatus = crmStatus;
 
         const updatedLead = await prisma.lead.update({
             where: { id: leadId },
             data: updateData,
         });
 
-        // Log call in audit trail
+        // Maintain legacy leadLog audit trail
         await prisma.leadLog.create({
             data: {
                 leadId,
-                action: 'call_logged',
-                field: 'outcome',
-                newValue: `${outcome}${notes ? ` — ${notes.substring(0, 80)}` : ''}`,
+                action: 'activity_logged',
+                field: 'type',
+                newValue: `${type}${outcome ? ` (${outcome})` : ''}${notes ? ` — ${notes.substring(0, 80)}` : ''}`,
             }
         });
 
-        res.json({ callLog, lead: updatedLead });
+        res.json({ activity, lead: updatedLead });
     } catch (err) {
-        console.error('Call log error:', err);
-        res.status(500).json({ error: 'Failed to log call' });
+        console.error('Activity log error:', err);
+        res.status(500).json({ error: 'Failed to log activity' });
     }
 });
 
 /**
- * GET /api/leads/:id/calls — get call history for a lead
+ * GET /api/leads/:id/activities — get activity timeline for a lead
  */
-app.get('/api/leads/:id/calls', async (req, res) => {
+app.get('/api/leads/:id/activities', async (req, res) => {
     try {
         const leadId = parseInt(req.params.id);
-        const calls = await prisma.callLog.findMany({
-            where: { leadId },
+        const { type } = req.query; // filter by type optional
+        
+        const where = { leadId };
+        if (type && type !== 'all') {
+            where.type = type;
+        }
+
+        const activities = await prisma.activity.findMany({
+            where,
             orderBy: { createdAt: 'desc' },
         });
-        res.json(calls);
+        res.json(activities);
     } catch (err) {
-        console.error('Call history error:', err);
+        console.error('Activity history error:', err);
         res.status(500).json({ error: 'Database error' });
+    }
+});
+
+/**
+ * PATCH /api/activities/:id — update activity (e.g. mark as done)
+ */
+app.patch('/api/activities/:id', async (req, res) => {
+    try {
+        const activityId = req.params.id;
+        const updates = req.body;
+        
+        // Allowed updates: isDone, notes, outcome, dueDate
+        const data = {};
+        if (updates.isDone !== undefined) data.isDone = updates.isDone;
+        if (updates.notes !== undefined) data.notes = updates.notes;
+        if (updates.outcome !== undefined) data.outcome = updates.outcome;
+        if (updates.dueDate !== undefined) data.dueDate = updates.dueDate ? new Date(updates.dueDate) : null;
+
+        const updated = await prisma.activity.update({
+            where: { id: activityId },
+            data
+        });
+
+        res.json(updated);
+    } catch (err) {
+        console.error('Activity update error:', err);
+        res.status(500).json({ error: 'Failed to update activity' });
     }
 });
 
@@ -1249,6 +1316,8 @@ app.get('/api/base44/jobs', async (req, res) => {
 });
 
 // ── Startup with readiness checks ─────────────────────────────────────────
+
+app.use('/api', require('./src/routes/pipelines'));
 
 async function waitForDependencies(maxRetries = 15, delayMs = 2000) {
     const chalk = require('chalk');
