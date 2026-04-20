@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { apiGet, apiPost, apiPatch } from "@/lib/api";
 import { format, formatDistanceToNow, isToday, isBefore, startOfDay } from "date-fns";
 import { Badge } from "@/components/ui/badge";
@@ -15,7 +16,7 @@ import {
     Calendar, MessageSquare, RefreshCw, Target, Zap, X,
     Users, Trophy, Ban, Activity, ArrowRight, Voicemail,
     ThumbsUp, ThumbsDown, SkipForward, Filter, StickyNote,
-    Globe, Hammer, Download
+    Globe, Hammer, Download, Search
 } from "lucide-react";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -145,7 +146,11 @@ function parseCurrencyInput(value: string): number | null {
 
 // ── Main Component ─────────────────────────────────────────────────────────────
 
-export default function CRMPage() {
+function CRMPageContent() {
+    const searchParams = useSearchParams();
+    const targetLeadId = searchParams.get("leadId");
+    const hasNavigatedToTarget = useRef(false);
+
     const [stats, setStats] = useState<CrmStats | null>(null);
     const [queue, setQueue] = useState<Lead[]>([]);
     const [queueIdx, setQueueIdx] = useState(0);
@@ -157,6 +162,7 @@ export default function CRMPage() {
     const [showCallModal, setShowCallModal] = useState(false);
     const [showHistoryPanel, setShowHistoryPanel] = useState(false);
     const [savingCall, setSavingCall] = useState(false);
+    const [searchTerm, setSearchTerm] = useState("");
 
     // Call modal state
     const [callOutcome, setCallOutcome] = useState("");
@@ -186,12 +192,34 @@ export default function CRMPage() {
         try {
             const params = new URLSearchParams({ status: queueFilter, minScore, limit: "100" });
             if (siteStatusFilter !== "all") params.set("siteStatus", siteStatusFilter);
+            if (searchTerm) params.set("search", searchTerm);
             const data = await apiGet(`${API}/crm/queue?${params}`);
             setQueue(data);
             setQueueIdx(0);
         } catch { /* ignore */ }
         finally { setLoading(false); }
-    }, [queueFilter, minScore, siteStatusFilter]);
+    }, [queueFilter, minScore, siteStatusFilter, searchTerm]);
+
+    // Navigate to a specific lead when arriving from the Leads page via ?leadId=
+    useEffect(() => {
+        if (targetLeadId && queue.length > 0 && !hasNavigatedToTarget.current) {
+            const idx = queue.findIndex(l => l.id === Number(targetLeadId));
+            if (idx >= 0) {
+                setQueueIdx(idx);
+                hasNavigatedToTarget.current = true;
+            } else if (!loading) {
+                // Lead wasn't in the current filtered queue — reset filters and try to fetch with "all"
+                if (queueFilter !== "all" || minScore !== "0" || siteStatusFilter !== "all") {
+                    setQueueFilter("all");
+                    setMinScore("0");
+                    setSiteStatusFilter("all");
+                    setSearchTerm("");
+                } else {
+                    hasNavigatedToTarget.current = true; // give up, lead not found
+                }
+            }
+        }
+    }, [targetLeadId, queue, loading, queueFilter, minScore, siteStatusFilter]);
 
     const fetchCallLogs = useCallback(async (leadId: number) => {
         try {
@@ -442,6 +470,28 @@ export default function CRMPage() {
                                 className="h-7 w-14 text-xs" placeholder="0" />
                         </div>
                     </div>
+
+                    {/* Search Bar */}
+                    <form onSubmit={e => { e.preventDefault(); fetchQueue(); }} className="flex gap-2">
+                        <div className="relative flex-1">
+                            <Search className="absolute left-2.5 top-2 h-4 w-4 text-muted-foreground" />
+                            <Input
+                                type="search"
+                                placeholder="Search leads by name, phone, city..."
+                                className="pl-8 h-8 text-xs"
+                                value={searchTerm}
+                                onChange={e => setSearchTerm(e.target.value)}
+                            />
+                        </div>
+                        <Button type="submit" variant="secondary" size="sm" className="h-8 text-xs gap-1.5">
+                            <Search className="h-3 w-3" /> Search
+                        </Button>
+                        {searchTerm && (
+                            <Button type="button" variant="ghost" size="sm" className="h-8 text-xs gap-1" onClick={() => { setSearchTerm(""); }}>
+                                <X className="h-3 w-3" /> Clear
+                            </Button>
+                        )}
+                    </form>
 
                     {/* Progress Bar */}
                     {queue.length > 0 && (
@@ -940,5 +990,17 @@ export default function CRMPage() {
                 </DialogContent>
             </Dialog>
         </div>
+    );
+}
+
+export default function CRMPage() {
+    return (
+        <Suspense fallback={
+            <div className="p-12 flex items-center justify-center text-muted-foreground">
+                <RefreshCw className="h-6 w-6 animate-spin mr-2" /> Loading CRM...
+            </div>
+        }>
+            <CRMPageContent />
+        </Suspense>
     );
 }

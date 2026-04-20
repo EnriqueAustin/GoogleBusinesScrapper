@@ -654,7 +654,7 @@ export default function LeadsPage() {
                                                 <Eye className="h-3.5 w-3.5" />
                                             </Button>
                                             <Button variant="ghost" size="icon" className="h-7 w-7 text-primary" asChild title="Open in CRM">
-                                                <a href="/crm">
+                                                <a href={`/crm?leadId=${lead.id}`}>
                                                     <PhoneCall className="h-3.5 w-3.5" />
                                                 </a>
                                             </Button>

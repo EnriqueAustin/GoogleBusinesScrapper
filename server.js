@@ -916,7 +916,7 @@ app.get('/api/crm/tasks', async (req, res) => {
  */
 app.get('/api/crm/queue', async (req, res) => {
     try {
-        const { status = 'all', minScore = '0', limit = '50', siteStatus } = req.query;
+        const { status = 'all', minScore = '0', limit = '50', siteStatus, search } = req.query;
 
         const where = {
             leadScore: { gte: parseInt(minScore) || 0 },
@@ -931,6 +931,16 @@ app.get('/api/crm/queue', async (req, res) => {
 
         if (siteStatus && siteStatus !== 'all') {
             where.siteStatus = siteStatus;
+        }
+
+        if (search) {
+            where.OR = [
+                { name: { contains: search, mode: 'insensitive' } },
+                { phone: { contains: search, mode: 'insensitive' } },
+                { city: { contains: search, mode: 'insensitive' } },
+                { category: { contains: search, mode: 'insensitive' } },
+                { address: { contains: search, mode: 'insensitive' } },
+            ];
         }
 
         const leads = await prisma.lead.findMany({
