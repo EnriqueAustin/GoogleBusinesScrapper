@@ -25,7 +25,7 @@ export default function Navbar() {
         {/* Logo */}
         <div className="flex items-center gap-2 font-bold text-xl tracking-tight text-primary">
           <Activity className="w-6 h-6 shrink-0" />
-          <span>GBS Platform</span>
+          <span>LeadLens</span>
         </div>
 
         {/* Desktop Nav */}

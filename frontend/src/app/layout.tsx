@@ -6,8 +6,8 @@ import Navbar from '@/components/Navbar';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'Google Business Scraper',
-  description: 'Internal SaaS Lead Intelligence Platform',
+  title: 'LeadLens',
+  description: 'Lead intelligence platform for local business prospecting',
 };
 
 export default function RootLayout({

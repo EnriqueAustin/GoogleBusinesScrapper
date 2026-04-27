@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find /c/Users/anton/Documents/Development/antiGravityDev/GoogleBusinesScrapper -type f -name \"*.md\" ! -path \"*/node_modules/*\" ! -path \"*/.next/*\" -exec grep -l \"Scraper\\\\|Scrapper\" {} \\\\;)",
+      "Bash(xargs wc *)",
+      "Bash(xargs grep *)",
+      "Bash(npx tsc *)"
+    ]
+  }
+}

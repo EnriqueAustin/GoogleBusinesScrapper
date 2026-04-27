@@ -1,4 +1,4 @@
-// Centralized configuration for the Google Business Scraper
+// Centralized configuration for LeadLens
 // Adjust these values to control behavior and reduce detection risk
 
 const config = {

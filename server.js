@@ -38,6 +38,12 @@ app.get('/api/leads', async (req, res) => {
 
         if (req.query.siteStatus && req.query.siteStatus !== 'all') where.siteStatus = req.query.siteStatus;
 
+        if (req.query.crmStatus && req.query.crmStatus !== 'all') {
+            const statuses = req.query.crmStatus.split(',').filter(Boolean);
+            if (statuses.length === 1) where.crmStatus = statuses[0];
+            else if (statuses.length > 1) where.crmStatus = { in: statuses };
+        }
+
         if (query) where.query = { contains: query, mode: 'insensitive' };
         if (category) where.category = { contains: category, mode: 'insensitive' };
         if (city) where.city = { contains: city, mode: 'insensitive' };
@@ -1296,7 +1302,7 @@ async function waitForDependencies(maxRetries = 15, delayMs = 2000) {
     app.listen(PORT, () => {
         console.log(`\n  ┌──────────────────────────────────────────────┐`);
         console.log(`  │                                              │`);
-        console.log(`  │   Google Business Scraper — Dashboard V2     │`);
+        console.log(`  │   LeadLens — Dashboard V2                    │`);
         console.log(`  │   (Powered by PostgreSQL)                    │`);
         console.log(`  │                                              │`);
         console.log(`  │   http://localhost:${PORT}                      │`);

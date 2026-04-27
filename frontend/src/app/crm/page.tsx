@@ -16,7 +16,8 @@ import {
     Calendar, MessageSquare, RefreshCw, Target, Zap, X,
     Users, Trophy, Ban, Activity, ArrowRight, Voicemail,
     ThumbsUp, ThumbsDown, SkipForward, Filter, StickyNote,
-    Globe, Hammer, Download, Search
+    Globe, Hammer, Download, Search,
+    MessageCircle, Send, Eye, Link, DollarSign
 } from "lucide-react";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -92,6 +93,17 @@ const CALL_OUTCOMES: { key: string; label: string; icon: React.ElementType; colo
     { key: "left_message", label: "Left Message", icon: MessageSquare, color: "text-sky-400", suggestedStatus: "attempting" },
 ];
 
+const WHATSAPP_OUTCOMES: { key: string; label: string; icon: React.ElementType; color: string; suggestedStatus?: string }[] = [
+    { key: "wa_demo_sent", label: "Demo Link Sent", icon: Link, color: "text-green-400", suggestedStatus: "qualified" },
+    { key: "wa_demo_viewed", label: "Demo Viewed", icon: Eye, color: "text-emerald-400", suggestedStatus: "qualified" },
+    { key: "wa_proposal_sent", label: "Proposal Sent", icon: Send, color: "text-blue-400", suggestedStatus: "qualified" },
+    { key: "wa_invoice_sent", label: "Invoice Sent", icon: DollarSign, color: "text-amber-400", suggestedStatus: "qualified" },
+    { key: "wa_invoice_paid", label: "Invoice Paid!", icon: Trophy, color: "text-purple-400", suggestedStatus: "closed_won" },
+    { key: "wa_follow_up", label: "Follow-Up Sent", icon: MessageCircle, color: "text-sky-400", suggestedStatus: "qualified" },
+    { key: "wa_no_response", label: "No Response", icon: Clock, color: "text-zinc-400", suggestedStatus: "attempting" },
+    { key: "wa_not_interested", label: "Not Interested", icon: ThumbsDown, color: "text-red-400", suggestedStatus: "disqualified" },
+];
+
 const API = "/api";
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -101,8 +113,15 @@ function getStatusInfo(key: string) {
 }
 
 function getOutcomeInfo(key: string) {
-    return CALL_OUTCOMES.find(o => o.key === key);
+    return CALL_OUTCOMES.find(o => o.key === key) ?? WHATSAPP_OUTCOMES.find(o => o.key === key);
 }
+
+const ACTIVITY_TYPE_CONFIG: Record<string, { icon: React.ElementType; color: string; label: string }> = {
+    call: { icon: Phone, color: "text-emerald-400", label: "Call" },
+    email: { icon: MessageSquare, color: "text-violet-400", label: "Email" },
+    note: { icon: StickyNote, color: "text-amber-400", label: "Note" },
+    whatsapp: { icon: MessageCircle, color: "text-green-400", label: "WhatsApp" },
+};
 
 function ScoreBadge({ score }: { score: number }) {
     const cls = score >= 70 ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/40"
@@ -272,7 +291,8 @@ function CRMPageContent() {
 
     const handleOutcomeSelect = (key: string) => {
         setCallOutcome(key);
-        const outcome = CALL_OUTCOMES.find(o => o.key === key);
+        const outcomes = activityType === "whatsapp" ? WHATSAPP_OUTCOMES : CALL_OUTCOMES;
+        const outcome = outcomes.find(o => o.key === key);
         if (outcome?.suggestedStatus) setOverrideStatus(outcome.suggestedStatus);
     };
 
@@ -301,6 +321,14 @@ function CRMPageContent() {
             if (Object.keys(patchData).length > 0) {
                 await apiPatch(`${API}/leads/${currentLead.id}/crm`, patchData);
             }
+
+            // Log the activity (call / email / note / whatsapp)
+            await apiPost(`${API}/leads/${currentLead.id}/calls`, {
+                type: activityType,
+                outcome: callOutcome,
+                notes: callNotes || null,
+                duration: callDuration ? parseInt(callDuration) * 60 : null,
+            });
 
             const nextSetupFee = patchData.setupFee !== undefined ? patchData.setupFee : currentLead.setupFee;
             const nextMonthlyFee = patchData.monthlyFee !== undefined ? patchData.monthlyFee : currentLead.monthlyFee;
@@ -364,7 +392,7 @@ function CRMPageContent() {
     const totalActive = stats ? (Number(stats.new || 0) + Number(stats.attempting || 0) + Number(stats.connected || 0) + Number(stats.qualified || 0)) : 0;
 
     return (
-        <div className="p-3 sm:p-6 max-w-[1600px] mx-auto space-y-4 sm:space-y-6 min-h-screen">
+        <div className="w-full overflow-x-hidden p-3 sm:p-6 max-w-[1600px] mx-auto space-y-4 sm:space-y-6 min-h-screen">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
@@ -445,14 +473,14 @@ function CRMPageContent() {
             )}
 
             {/* Main Grid: Dialer + Pipeline */}
-            <div className="grid lg:grid-cols-5 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
 
                 {/* ── Dialer Panel ──────────────────────────────────────────── */}
-                <div className="lg:col-span-3 space-y-4">
+                <div className="lg:col-span-3 space-y-4 min-w-0">
 
                     {/* Queue Controls */}
-                    <div className="flex flex-wrap items-center gap-2">
-                        <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                    <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2">
+                        <div className="flex items-center gap-1.5 text-sm text-muted-foreground shrink-0">
                             <Filter className="h-3.5 w-3.5" /> Queue:
                         </div>
                         <div className="flex gap-1 flex-wrap">
@@ -464,7 +492,7 @@ function CRMPageContent() {
                                 </Button>
                             ))}
                         </div>
-                        <div className="ml-auto flex items-center gap-1.5">
+                        <div className="flex items-center gap-1.5 sm:ml-auto">
                             <span className="text-xs text-muted-foreground">Min Score:</span>
                             <Input type="number" value={minScore} onChange={e => setMinScore(e.target.value)}
                                 className="h-7 w-14 text-xs" placeholder="0" />
@@ -522,31 +550,33 @@ function CRMPageContent() {
                     ) : (
                         <div className="rounded-2xl border bg-card overflow-hidden">
                             {/* Status bar */}
-                            <div className={`px-5 py-2 border-b ${getStatusInfo(currentLead.crmStatus).bg} ${getStatusInfo(currentLead.crmStatus).border} flex items-center justify-between`}>
-                                <div className="flex items-center gap-2">
+                            <div className={`px-3 sm:px-5 py-2 border-b ${getStatusInfo(currentLead.crmStatus).bg} ${getStatusInfo(currentLead.crmStatus).border} flex flex-wrap items-center justify-between gap-y-1 gap-x-2`}>
+                                <div className="flex items-center gap-2 shrink-0">
                                     <StatusBadge status={currentLead.crmStatus} />
                                     <SiteStatusBadge status={currentLead.siteStatus} />
                                 </div>
-                                <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                                <div className="flex items-center gap-2 text-xs text-muted-foreground min-w-0">
                                     {currentLead.callCount > 0 && (
-                                        <span className="flex items-center gap-1">
+                                        <span className="flex items-center gap-1 shrink-0">
                                             <Phone className="h-3 w-3" /> {currentLead.callCount} call{currentLead.callCount !== 1 ? "s" : ""}
                                         </span>
                                     )}
                                     {currentLead.lastCalledAt && (
-                                        <span>Last: {formatDistanceToNow(new Date(currentLead.lastCalledAt), { addSuffix: true })}</span>
+                                        <span className="truncate">Last: {formatDistanceToNow(new Date(currentLead.lastCalledAt), { addSuffix: true })}</span>
                                     )}
                                 </div>
                             </div>
 
-                            <div className="p-5 space-y-4">
+                            <div className="p-3 sm:p-5 space-y-4">
                                 {/* Name + Score */}
                                 <div className="flex items-start justify-between gap-3">
-                                    <div>
-                                        <h2 className="text-xl font-bold">{currentLead.name}</h2>
-                                        <p className="text-sm text-muted-foreground">{currentLead.category}</p>
+                                    <div className="min-w-0 flex-1">
+                                        <h2 className="text-xl font-bold break-words">{currentLead.name}</h2>
+                                        <p className="text-sm text-muted-foreground break-words">{currentLead.category}</p>
                                     </div>
-                                    <ScoreBadge score={currentLead.leadScore} />
+                                    <div className="shrink-0">
+                                        <ScoreBadge score={currentLead.leadScore} />
+                                    </div>
                                 </div>
 
                                 {/* Contact Grid */}
@@ -690,7 +720,7 @@ function CRMPageContent() {
                             </div>
 
                             {/* Navigation */}
-                            <div className="border-t px-5 py-3 flex items-center justify-between bg-muted/20">
+                            <div className="border-t px-3 sm:px-5 py-3 flex items-center justify-between bg-muted/20">
                                 <Button variant="ghost" size="sm" onClick={handlePrev} disabled={queueIdx === 0} className="gap-1 text-xs">
                                     <ChevronLeft className="h-4 w-4" /> Previous
                                 </Button>
@@ -706,25 +736,32 @@ function CRMPageContent() {
                     {showHistoryPanel && currentLead && (
                         <div className="rounded-xl border bg-card p-4 space-y-3">
                             <h3 className="text-sm font-semibold flex items-center gap-2">
-                                <Activity className="h-4 w-4 text-primary" /> Call History — {currentLead.name}
+                                <Activity className="h-4 w-4 text-primary" /> Activity History — {currentLead.name}
                             </h3>
                             {callLogs.length === 0 ? (
-                                <p className="text-xs text-muted-foreground py-4 text-center">No calls logged yet.</p>
+                                <p className="text-xs text-muted-foreground py-4 text-center">No activity logged yet.</p>
                             ) : (
                                 <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
                                     {callLogs.map(log => {
                                         const outInfo = getOutcomeInfo(log.outcome);
+                                        const typeCfg = ACTIVITY_TYPE_CONFIG[log.type] ?? ACTIVITY_TYPE_CONFIG.call;
+                                        const TypeIcon = typeCfg.icon;
                                         return (
-                                            <div key={log.id} className="flex gap-3 p-2.5 rounded-lg bg-muted/40 text-xs">
-                                                {outInfo && <outInfo.icon className={`h-4 w-4 ${outInfo.color} shrink-0 mt-0.5`} />}
+                                            <div key={log.id} className={`flex gap-3 p-2.5 rounded-lg text-xs ${log.type === "whatsapp" ? "bg-green-500/5 border border-green-500/20" : "bg-muted/40"}`}>
+                                                <div className="flex flex-col items-center gap-1 shrink-0">
+                                                    <TypeIcon className={`h-4 w-4 ${typeCfg.color}`} />
+                                                </div>
                                                 <div className="flex-1 min-w-0">
-                                                    <div className="flex justify-between gap-2">
-                                                        <span className={`font-medium capitalize ${outInfo?.color}`}>{outInfo?.label ?? log.outcome}</span>
+                                                    <div className="flex justify-between gap-2 flex-wrap">
+                                                        <span className={`font-medium ${outInfo?.color ?? typeCfg.color}`}>
+                                                            {outInfo?.label ?? log.outcome}
+                                                        </span>
                                                         <span className="text-muted-foreground shrink-0">
                                                             {formatDistanceToNow(new Date(log.createdAt), { addSuffix: true })}
                                                         </span>
                                                     </div>
-                                                    {log.notes && <p className="text-muted-foreground mt-0.5 truncate">{log.notes}</p>}
+                                                    <span className={`text-[10px] uppercase tracking-wide font-medium ${typeCfg.color} opacity-70`}>{typeCfg.label}</span>
+                                                    {log.notes && <p className="text-muted-foreground mt-0.5 line-clamp-2">{log.notes}</p>}
                                                     {log.duration && <p className="text-muted-foreground">{Math.floor(log.duration / 60)}m {log.duration % 60}s</p>}
                                                 </div>
                                             </div>
@@ -737,7 +774,7 @@ function CRMPageContent() {
                 </div>
 
                 {/* ── Pipeline Funnel + Leaderboard ─────────────────────────── */}
-                <div className="lg:col-span-2 space-y-4">
+                <div className="lg:col-span-2 space-y-4 min-w-0">
 
                     {/* Pipeline Funnel */}
                     <Card>
@@ -840,31 +877,52 @@ function CRMPageContent() {
                 <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2">
-                            <Activity className="h-5 w-5 text-primary" />
+                            {activityType === "whatsapp"
+                                ? <MessageCircle className="h-5 w-5 text-green-400" />
+                                : <Activity className="h-5 w-5 text-primary" />
+                            }
                             Log Activity — {currentLead?.name}
                         </DialogTitle>
                     </DialogHeader>
 
                     <div className="space-y-4 pt-1">
                         {/* Activity Type Selector */}
-                        <div className="flex bg-muted p-1 rounded-lg">
-                            {["call", "email", "note"].map((type) => (
-                                <button key={type} onClick={() => setActivityType(type)}
-                                    className={`flex-1 text-xs py-1.5 capitalize rounded-md transition-colors ${activityType === type ? "bg-background shadow font-medium" : "text-muted-foreground hover:text-foreground"}`}>
-                                    {type}
-                                </button>
-                            ))}
+                        <div className="flex bg-muted p-1 rounded-lg gap-0.5">
+                            {(["call", "email", "note", "whatsapp"] as const).map((type) => {
+                                const cfg = ACTIVITY_TYPE_CONFIG[type];
+                                const Icon = cfg.icon;
+                                return (
+                                    <button key={type} onClick={() => { setActivityType(type); setCallOutcome(""); }}
+                                        className={`flex-1 flex items-center justify-center gap-1 text-xs py-1.5 rounded-md transition-colors ${activityType === type
+                                            ? type === "whatsapp"
+                                                ? "bg-green-600 text-white shadow font-medium"
+                                                : "bg-background shadow font-medium"
+                                            : "text-muted-foreground hover:text-foreground"
+                                        }`}>
+                                        <Icon className={`h-3 w-3 ${activityType === type && type === "whatsapp" ? "text-white" : cfg.color}`} />
+                                        <span className="capitalize">{cfg.label}</span>
+                                    </button>
+                                );
+                            })}
                         </div>
 
                         {/* Outcome Selector */}
                         <div className="space-y-2">
-                            <label className="text-xs font-medium text-muted-foreground">Activity Outcome *</label>
+                            {activityType === "whatsapp" ? (
+                                <label className="text-xs font-medium text-green-400 flex items-center gap-1">
+                                    <MessageCircle className="h-3 w-3" /> WhatsApp Outcome *
+                                </label>
+                            ) : (
+                                <label className="text-xs font-medium text-muted-foreground">Activity Outcome *</label>
+                            )}
                             <div className="grid grid-cols-2 gap-2">
-                                {CALL_OUTCOMES.map(({ key, label, icon: Icon, color }) => (
+                                {(activityType === "whatsapp" ? WHATSAPP_OUTCOMES : CALL_OUTCOMES).map(({ key, label, icon: Icon, color }) => (
                                     <button key={key}
                                         onClick={() => handleOutcomeSelect(key)}
                                         className={`flex items-center gap-2 p-2.5 rounded-lg border text-sm transition-all text-left ${callOutcome === key
-                                            ? `border-primary bg-primary/10 ${color} font-medium ring-1 ring-primary/40`
+                                            ? activityType === "whatsapp"
+                                                ? `border-green-500/60 bg-green-500/10 ${color} font-medium ring-1 ring-green-500/40`
+                                                : `border-primary bg-primary/10 ${color} font-medium ring-1 ring-primary/40`
                                             : "border-border hover:border-primary/30 hover:bg-muted/50"
                                             }`}>
                                         <Icon className={`h-4 w-4 shrink-0 ${callOutcome === key ? color : "text-muted-foreground"}`} />
@@ -892,22 +950,30 @@ function CRMPageContent() {
 
                         {/* Notes */}
                         <div className="space-y-2">
-                            <label className="text-xs font-medium text-muted-foreground">Call Notes</label>
+                            <label className="text-xs font-medium text-muted-foreground">
+                                {activityType === "whatsapp" ? "WhatsApp Notes" : activityType === "email" ? "Email Notes" : activityType === "note" ? "Note" : "Call Notes"}
+                            </label>
                             <textarea
                                 value={callNotes}
                                 onChange={e => setCallNotes(e.target.value)}
-                                placeholder="What was discussed? Key objections, interest level, next steps..."
-                                className="w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm min-h-[80px] resize-none focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                                placeholder={
+                                    activityType === "whatsapp"
+                                        ? "What did you send / what did they say? Link sent, feedback, next step..."
+                                        : "What was discussed? Key objections, interest level, next steps..."
+                                }
+                                className={`w-full rounded-lg border px-3 py-2 text-sm min-h-[80px] resize-none focus-visible:outline-none focus-visible:ring-1 bg-transparent ${activityType === "whatsapp" ? "border-green-500/30 focus-visible:ring-green-500" : "border-input focus-visible:ring-ring"}`}
                             />
                         </div>
 
                         {/* Duration + Follow-up */}
-                        <div className="grid grid-cols-2 gap-3">
-                            <div className="space-y-1.5">
-                                <label className="text-xs font-medium text-muted-foreground">Duration (minutes)</label>
-                                <Input type="number" value={callDuration} onChange={e => setCallDuration(e.target.value)}
-                                    placeholder="e.g. 5" className="h-8 text-sm" />
-                            </div>
+                        <div className={`grid gap-3 ${activityType === "call" ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1"}`}>
+                            {activityType === "call" && (
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-medium text-muted-foreground">Duration (minutes)</label>
+                                    <Input type="number" value={callDuration} onChange={e => setCallDuration(e.target.value)}
+                                        placeholder="e.g. 5" className="h-8 text-sm" />
+                                </div>
+                            )}
                             <div className="space-y-1.5">
                                 <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
                                     <Calendar className="h-3 w-3" /> Follow-up Date
@@ -923,7 +989,7 @@ function CRMPageContent() {
                                 <label className="text-xs font-medium text-emerald-500 font-bold flex items-center gap-1">
                                     <Target className="h-3 w-3" /> Revenue Model
                                 </label>
-                                <div className="grid grid-cols-2 gap-3">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                     <div className="space-y-1.5">
                                         <label className="text-xs font-medium text-muted-foreground">Setup Fee (R)</label>
                                         <Input
@@ -944,7 +1010,7 @@ function CRMPageContent() {
                                             className="h-8 text-sm border-emerald-500/30 bg-background/70 focus-visible:ring-emerald-500"
                                         />
                                     </div>
-                                    <div className="space-y-1.5 col-span-2">
+                                    <div className="space-y-1.5 sm:col-span-2">
                                         <label className="text-xs font-medium text-muted-foreground">Or One Big Price / Total (R)</label>
                                         <Input
                                             type="number"

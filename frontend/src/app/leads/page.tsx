@@ -125,6 +125,7 @@ export default function LeadsPage() {
     const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
     const [categories, setCategories] = useState<string[]>([]);
     const [siteStatusFilter, setSiteStatusFilter] = useState("all");
+    const [crmStatusFilter, setCrmStatusFilter] = useState<string[]>(["new"]);
 
     // Sorting
     const [sortBy, setSortBy] = useState("scrapedAt");
@@ -170,6 +171,7 @@ export default function LeadsPage() {
             if (minScore) params.append("minScore", minScore);
             if (categoryFilter) params.append("category", categoryFilter);
             if (siteStatusFilter !== "all") params.append("siteStatus", siteStatusFilter);
+            if (crmStatusFilter.length > 0) params.append("crmStatus", crmStatusFilter.join(","));
             params.append("sortBy", sortBy);
             params.append("sortDir", sortDir);
             params.append("page", page.toString());
@@ -184,7 +186,7 @@ export default function LeadsPage() {
         } finally {
             setLoading(false);
         }
-    }, [searchTerm, filterWebsite, minRating, cityFilter, minReviews, maxReviews, minScore, categoryFilter, siteStatusFilter, sortBy, sortDir, page]);
+    }, [searchTerm, filterWebsite, minRating, cityFilter, minReviews, maxReviews, minScore, categoryFilter, siteStatusFilter, crmStatusFilter, sortBy, sortDir, page]);
 
     useEffect(() => { fetchLeads(); }, [fetchLeads]);
 
@@ -381,7 +383,8 @@ export default function LeadsPage() {
     const resetFilters = () => {
         setSearchTerm(""); setFilterWebsite("all"); setMinRating("all");
         setCityFilter(""); setMinReviews(""); setMaxReviews("");
-        setMinScore(""); setCategoryFilter(""); setSiteStatusFilter("all"); setPage(1);
+        setMinScore(""); setCategoryFilter(""); setSiteStatusFilter("all");
+        setCrmStatusFilter(["new"]); setPage(1);
     };
 
     // ── Score Badge ──────────────────────────────────────────────────
@@ -483,6 +486,40 @@ export default function LeadsPage() {
                         <option value="none">No Site Built</option>
                     </select>
                 </div>
+            </div>
+
+            {/* CRM Status Filter */}
+            <div className="flex flex-wrap items-center gap-1.5">
+                <span className="text-xs text-muted-foreground font-medium flex items-center gap-1">
+                    <Filter className="h-3 w-3" /> Status:
+                </span>
+                <button
+                    onClick={() => { setCrmStatusFilter([]); setPage(1); }}
+                    className={`h-7 px-2.5 rounded-md text-xs font-medium border transition-colors ${crmStatusFilter.length === 0 ? "bg-primary text-primary-foreground border-primary" : "border-input text-muted-foreground hover:bg-muted"}`}
+                >
+                    All
+                </button>
+                {CRM_STATUSES.map(s => {
+                    const active = crmStatusFilter.includes(s.key);
+                    return (
+                        <button
+                            key={s.key}
+                            onClick={() => {
+                                setCrmStatusFilter(prev =>
+                                    prev.includes(s.key)
+                                        ? prev.filter(k => k !== s.key)
+                                        : [...prev, s.key]
+                                );
+                                setPage(1);
+                            }}
+                            className={`h-7 px-2.5 rounded-md text-xs font-medium border transition-colors inline-flex items-center gap-1 ${active ? `${s.bg} ${s.color} ${s.border}` : "border-input text-muted-foreground hover:bg-muted"}`}
+                        >
+                            <s.icon className="h-3 w-3" />
+                            {s.label}
+                            {active && <X className="h-2.5 w-2.5 opacity-60" />}
+                        </button>
+                    );
+                })}
             </div>
 
             {/* Advanced Filters Panel */}
@@ -684,31 +721,58 @@ export default function LeadsPage() {
                                         <p className="text-xs text-muted-foreground">{lead.category || "No Category"}</p>
                                     </div>
                                 </div>
-                                <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => openLeadDetail(lead)} title="View Details">
-                                    <Eye className="h-4 w-4 text-primary" />
-                                </Button>
+                                <div className="flex items-center gap-1 shrink-0">
+                                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openLeadDetail(lead)} title="View Details">
+                                        <Eye className="h-4 w-4 text-primary" />
+                                    </Button>
+                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-primary" asChild title="Open in CRM">
+                                        <a href={`/crm?leadId=${lead.id}`}>
+                                            <PhoneCall className="h-4 w-4" />
+                                        </a>
+                                    </Button>
+                                </div>
                             </div>
                             <div className="p-3 grid gap-2">
                                 <div className="flex flex-wrap gap-2 items-center">
                                     <StatusBadge status={lead.crmStatus} />
                                     {lead.siteStatus !== "none" && <SiteStatusBadge status={lead.siteStatus} />}
                                     <ScoreBadge score={lead.leadScore} />
+                                    {lead.callCount > 0 && (
+                                        <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
+                                            <Phone className="h-2.5 w-2.5" /> {lead.callCount} calls
+                                        </span>
+                                    )}
                                 </div>
-                                <div className="flex gap-4 text-xs mt-1">
+                                <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs mt-1 items-center">
                                     {lead.phone && (
                                         <a href={`tel:${lead.phone}`} className="flex items-center gap-1 text-muted-foreground hover:text-emerald-400">
-                                            <Phone className="h-3 w-3" /> Call
+                                            <Phone className="h-3 w-3" /> {lead.phone}
                                         </a>
                                     )}
                                     {lead.website && lead.website !== "None" && (
                                         <a href={lead.website} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-muted-foreground hover:text-blue-400">
-                                            <Globe className="h-3 w-3" /> Web
+                                            <Globe className="h-3 w-3" /> Website
                                         </a>
                                     )}
-                                    <span className="flex items-center gap-1 text-muted-foreground ml-auto">
+                                    {lead.emails && (
+                                        <span className="flex items-center gap-1 text-emerald-500 truncate max-w-[200px]" title={lead.emails}>
+                                            {lead.emails.split(',')[0].trim()}
+                                        </span>
+                                    )}
+                                </div>
+                                <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                                    <span className="flex items-center gap-1">
                                         <Star className="h-3 w-3 text-amber-400 fill-amber-400" />
                                         {lead.rating || "—"}
                                     </span>
+                                    {lead.reviewCount != null && (
+                                        <span>{lead.reviewCount} reviews</span>
+                                    )}
+                                    {lead.hasWebsite !== undefined && (
+                                        <span className={lead.hasWebsite ? "text-emerald-500" : "text-amber-400"}>
+                                            {lead.hasWebsite ? "Has website" : "No website"}
+                                        </span>
+                                    )}
                                 </div>
                             </div>
                         </Card>

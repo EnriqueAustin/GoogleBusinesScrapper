@@ -37,7 +37,7 @@ function step(n, label) {
 
 async function setup() {
     console.log('\n╔══════════════════════════════════════════════╗');
-    console.log('║  Google Business Scraper — Fresh Setup       ║');
+    console.log('║  LeadLens — Fresh Setup                      ║');
     console.log('╚══════════════════════════════════════════════╝\n');
 
     // Step 1: Check Docker

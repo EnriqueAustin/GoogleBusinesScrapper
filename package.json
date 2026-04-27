@@ -1,7 +1,7 @@
 {
-  "name": "google-business-scraper",
+  "name": "leadlens",
   "version": "1.0.0",
-  "description": "Google Maps business scraper with web dashboard for lead generation",
+  "description": "LeadLens — Google Maps lead intelligence platform with CRM and sales pipeline",
   "main": "server.js",
   "scripts": {
     "setup": "node scripts/setup.js",
