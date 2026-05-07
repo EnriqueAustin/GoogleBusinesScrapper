@@ -4,10 +4,13 @@ import { useState } from "react";
 import Link from 'next/link';
 import { LayoutDashboard, Users, Activity, Settings, PhoneCall, ListTodo, BarChart, Menu, X } from 'lucide-react';
 import { usePathname } from 'next/navigation';
+import DatasetSelector from './DatasetSelector';
+import { useDataset } from '@/lib/dataset-context';
 
 export default function Navbar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const pathname = usePathname();
+  const { buildHref } = useDataset();
 
   const navLinks = [
     { href: "/", label: "Overview", icon: LayoutDashboard },
@@ -33,19 +36,20 @@ export default function Navbar() {
           {navLinks.map(({ href, label, icon: Icon }) => {
             const isActive = pathname === href || (href !== "/" && pathname?.startsWith(href));
             return (
-              <Link 
-                key={href} 
-                href={href} 
+              <Link
+                key={href}
+                href={buildHref(href)}
                 className={`flex items-center gap-2 text-sm font-medium transition-colors ${isActive ? "text-primary" : "text-muted-foreground hover:text-primary"}`}
               >
                 <Icon className="w-4 h-4" /> {label}
               </Link>
             );
           })}
+          <DatasetSelector />
         </div>
 
         {/* Mobile Menu Toggle */}
-        <button 
+        <button
           className="lg:hidden p-2 text-muted-foreground hover:text-primary focus:outline-none"
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
         >
@@ -56,12 +60,15 @@ export default function Navbar() {
       {/* Mobile Nav Dropdown */}
       {isMobileMenuOpen && (
         <div className="lg:hidden absolute top-16 left-0 w-full bg-card border-b shadow-lg flex flex-col p-4 space-y-2 z-50">
+          <div className="pb-2 border-b mb-2">
+            <DatasetSelector />
+          </div>
           {navLinks.map(({ href, label, icon: Icon }) => {
             const isActive = pathname === href || (href !== "/" && pathname?.startsWith(href));
             return (
-              <Link 
-                key={href} 
-                href={href} 
+              <Link
+                key={href}
+                href={buildHref(href)}
                 onClick={() => setIsMobileMenuOpen(false)}
                 className={`flex items-center gap-3 text-base font-medium transition-colors p-3 rounded-lg ${isActive ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-primary hover:bg-muted"}`}
               >

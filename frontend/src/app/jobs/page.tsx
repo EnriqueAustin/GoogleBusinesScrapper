@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { apiGet, apiPost, apiDelete } from "@/lib/api";
+import { useDataset } from "@/lib/dataset-context";
 import { formatDistanceToNow } from "date-fns";
 import {
     Card,
@@ -27,17 +28,18 @@ interface Job {
 }
 
 export default function JobsPage() {
+    const { activeDatasetId } = useDataset();
     const [jobs, setJobs] = useState<Job[]>([]);
     const [loading, setLoading] = useState(true);
     const [newQuery, setNewQuery] = useState("");
     const [submitting, setSubmitting] = useState(false);
 
     const fetchJobs = async () => {
+        if (!activeDatasetId) return;
         try {
             const data = await apiGet<Job[]>("/api/jobs");
             setJobs(data);
         } catch (err) {
-            // Silent on polling — only log at debug level
             console.debug("[Jobs] fetch failed after retries", err);
         } finally {
             setLoading(false);
@@ -46,10 +48,9 @@ export default function JobsPage() {
 
     useEffect(() => {
         fetchJobs();
-        // Poll every 5 seconds for live updates
         const interval = setInterval(fetchJobs, 5000);
         return () => clearInterval(interval);
-    }, []);
+    }, [activeDatasetId]);
 
     const handleStartJob = async (e: React.FormEvent) => {
         e.preventDefault();

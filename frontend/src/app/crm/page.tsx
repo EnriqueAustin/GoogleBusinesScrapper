@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { apiGet, apiPost, apiPatch } from "@/lib/api";
+import { useDataset } from "@/lib/dataset-context";
 import { format, formatDistanceToNow, isToday, isBefore, startOfDay } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -166,6 +167,7 @@ function parseCurrencyInput(value: string): number | null {
 // ── Main Component ─────────────────────────────────────────────────────────────
 
 function CRMPageContent() {
+    const { activeDatasetId } = useDataset();
     const searchParams = useSearchParams();
     const targetLeadId = searchParams.get("leadId");
     const hasNavigatedToTarget = useRef(false);
@@ -247,8 +249,8 @@ function CRMPageContent() {
         } catch { setCallLogs([]); }
     }, []);
 
-    useEffect(() => { fetchStats(); }, [fetchStats]);
-    useEffect(() => { fetchQueue(); }, [fetchQueue]);
+    useEffect(() => { if (activeDatasetId) fetchStats(); }, [fetchStats, activeDatasetId]);
+    useEffect(() => { if (activeDatasetId) fetchQueue(); }, [fetchQueue, activeDatasetId]);
     useEffect(() => {
         if (currentLead) {
             setQualNotes(currentLead.qualificationNotes || "");

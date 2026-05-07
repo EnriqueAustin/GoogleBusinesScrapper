@@ -18,11 +18,95 @@ function parseNullableMoney(value) {
     return Number.isFinite(parsed) ? parsed : null;
 }
 
+function getDatasetId(req) {
+    return req.headers['x-dataset-id'] || req.query.datasetId;
+}
+
+function requireDatasetId(req, res) {
+    const datasetId = getDatasetId(req);
+    if (!datasetId) {
+        res.status(400).json({ error: 'Missing x-dataset-id header' });
+        return null;
+    }
+    return datasetId;
+}
+
+// ── Dataset CRUD ────────────────────────────────────────────────────────
+
+app.get('/api/datasets', async (req, res) => {
+    try {
+        const datasets = await prisma.dataset.findMany({
+            orderBy: { createdAt: 'asc' },
+            include: { _count: { select: { leads: true, jobs: true } } }
+        });
+        res.json(datasets);
+    } catch (err) {
+        console.error('Error fetching datasets:', err);
+        res.status(500).json({ error: 'Database error' });
+    }
+});
+
+app.post('/api/datasets', async (req, res) => {
+    try {
+        const { name } = req.body;
+        if (!name || !name.trim()) return res.status(400).json({ error: 'Dataset name is required' });
+
+        const dataset = await prisma.dataset.create({
+            data: { name: name.trim() }
+        });
+        res.json(dataset);
+    } catch (err) {
+        if (err.code === 'P2002') return res.status(409).json({ error: 'A dataset with that name already exists' });
+        console.error('Error creating dataset:', err);
+        res.status(500).json({ error: 'Database error' });
+    }
+});
+
+app.patch('/api/datasets/:id', async (req, res) => {
+    try {
+        const { name } = req.body;
+        if (!name || !name.trim()) return res.status(400).json({ error: 'Dataset name is required' });
+
+        const dataset = await prisma.dataset.update({
+            where: { id: req.params.id },
+            data: { name: name.trim() }
+        });
+        res.json(dataset);
+    } catch (err) {
+        if (err.code === 'P2002') return res.status(409).json({ error: 'A dataset with that name already exists' });
+        console.error('Error updating dataset:', err);
+        res.status(500).json({ error: 'Database error' });
+    }
+});
+
+app.delete('/api/datasets/:id', async (req, res) => {
+    try {
+        const id = req.params.id;
+        const count = await prisma.dataset.count();
+        if (count <= 1) return res.status(400).json({ error: 'Cannot delete the last dataset' });
+
+        const leadCount = await prisma.lead.count({ where: { datasetId: id } });
+        if (leadCount > 0) return res.status(400).json({ error: `Cannot delete dataset with ${leadCount} leads. Delete leads first.` });
+
+        await prisma.job.deleteMany({ where: { datasetId: id } });
+        await prisma.query.deleteMany({ where: { datasetId: id } });
+        await prisma.demoJob.deleteMany({ where: { datasetId: id } });
+        await prisma.dataset.delete({ where: { id } });
+        res.json({ message: 'Dataset deleted' });
+    } catch (err) {
+        console.error('Error deleting dataset:', err);
+        res.status(500).json({ error: 'Database error' });
+    }
+});
+
 /**
  * GET /api/leads — return paginated leads with sorting and advanced filters
  */
 app.get('/api/leads', async (req, res) => {
     try {
+        const datasetId = requireDatasetId(req, res);
+        if (!datasetId) return;
+
         const {
             hasWebsite, query, category, minRating, search,
             page = 1, limit = 50,
@@ -31,7 +115,7 @@ app.get('/api/leads', async (req, res) => {
         } = req.query;
 
         // Build Prisma where clause
-        const where = {};
+        const where = { datasetId };
 
         if (hasWebsite === 'yes') where.hasWebsite = true;
         else if (hasWebsite === 'no') where.hasWebsite = false;
@@ -103,15 +187,18 @@ app.get('/api/leads', async (req, res) => {
  */
 app.get('/api/stats', async (req, res) => {
     try {
-        const total = await prisma.lead.count();
-        const withWebsite = await prisma.lead.count({ where: { hasWebsite: true } });
-        const noWebsite = await prisma.lead.count({ where: { hasWebsite: false } });
+        const datasetId = requireDatasetId(req, res);
+        if (!datasetId) return;
+
+        const total = await prisma.lead.count({ where: { datasetId } });
+        const withWebsite = await prisma.lead.count({ where: { datasetId, hasWebsite: true } });
+        const noWebsite = await prisma.lead.count({ where: { datasetId, hasWebsite: false } });
 
         // Get unique categories and queries
         const categoriesData = await prisma.lead.groupBy({
             by: ['category'],
             _count: { category: true },
-            where: { category: { not: null, notIn: ['N/A', ''] } },
+            where: { datasetId, category: { not: null, notIn: ['N/A', ''] } },
             orderBy: { _count: { category: 'desc' } },
             take: 10
         });
@@ -119,7 +206,7 @@ app.get('/api/stats', async (req, res) => {
         const queriesData = await prisma.lead.findMany({
             select: { query: true },
             distinct: ['query'],
-            where: { query: { not: null } }
+            where: { datasetId, query: { not: null } }
         });
 
         const topCategories = categoriesData.map(c => ({
@@ -270,6 +357,9 @@ app.get('/api/leads/:id/logs', async (req, res) => {
  */
 app.post('/api/leads/import', upload.single('file'), async (req, res) => {
     try {
+        const datasetId = requireDatasetId(req, res);
+        if (!datasetId) return;
+
         if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
 
         const csvContent = req.file.buffer.toString('utf-8');
@@ -307,8 +397,8 @@ app.post('/api/leads/import', upload.single('file'), async (req, res) => {
                 score = Math.max(0, Math.min(100, score));
 
                 await prisma.lead.upsert({
-                    where: { name_address: { name, address } },
-                    update: {}, // Don't overwrite existing data
+                    where: { name_address_datasetId: { name, address, datasetId } },
+                    update: {},
                     create: {
                         name,
                         category: row.Category || row.category || null,
@@ -322,6 +412,7 @@ app.post('/api/leads/import', upload.single('file'), async (req, res) => {
                         leadScore: score,
                         socials: row.Socials || row.socials || null,
                         query: row.Query || row.query || 'imported',
+                        datasetId,
                     },
                 });
 
@@ -362,15 +453,18 @@ app.get('/api/leads/export', (req, res) => {
  */
 app.post('/api/leads/deduplicate', async (req, res) => {
     try {
-        // Find exact duplicates (same name + same city, different IDs)
+        const datasetId = requireDatasetId(req, res);
+        if (!datasetId) return;
+
+        // Find exact duplicates (same name + same city, different IDs) within dataset
         const duplicates = await prisma.$queryRawUnsafe(`
             SELECT name, city, COUNT(*)::int as count, array_agg(id ORDER BY id) as ids
             FROM "Lead"
-            WHERE city IS NOT NULL
+            WHERE city IS NOT NULL AND "datasetId" = $1
             GROUP BY name, city
             HAVING COUNT(*) > 1
             LIMIT 100
-        `);
+        `, datasetId);
 
         let mergedCount = 0;
         for (const group of duplicates) {
@@ -409,8 +503,11 @@ app.post('/api/leads/deduplicate', async (req, res) => {
  */
 app.post('/api/leads/score', async (req, res) => {
     try {
-        const { ids } = req.body; // Optional: array of specific lead IDs
-        const where = ids && Array.isArray(ids) ? { id: { in: ids } } : {};
+        const datasetId = requireDatasetId(req, res);
+        if (!datasetId) return;
+
+        const { ids } = req.body;
+        const where = ids && Array.isArray(ids) ? { id: { in: ids }, datasetId } : { datasetId };
 
         const leads = await prisma.lead.findMany({ where });
         let updated = 0;
@@ -448,10 +545,13 @@ app.post('/api/leads/score', async (req, res) => {
  */
 app.get('/api/leads/categories', async (req, res) => {
     try {
+        const datasetId = requireDatasetId(req, res);
+        if (!datasetId) return;
+
         const categories = await prisma.lead.findMany({
             select: { category: true },
             distinct: ['category'],
-            where: { category: { not: null, notIn: ['N/A', ''] } },
+            where: { datasetId, category: { not: null, notIn: ['N/A', ''] } },
             orderBy: { category: 'asc' },
         });
         res.json(categories.map(c => c.category));
@@ -465,7 +565,11 @@ app.get('/api/leads/categories', async (req, res) => {
  */
 app.get('/api/queries', async (req, res) => {
     try {
+        const datasetId = requireDatasetId(req, res);
+        if (!datasetId) return;
+
         const queries = await prisma.query.findMany({
+            where: { datasetId },
             orderBy: { scrapedAt: 'desc' },
             select: { query: true, scrapedAt: true }
         });
@@ -520,6 +624,9 @@ app.post('/api/enrich', async (req, res) => {
  * POST /api/jobs — add a new scraping query to the queue
  */
 app.post('/api/jobs', async (req, res) => {
+    const datasetId = requireDatasetId(req, res);
+    if (!datasetId) return;
+
     const { query, params } = req.body;
     if (!query) {
         return res.status(400).json({ error: 'Missing query parameter' });
@@ -527,9 +634,8 @@ app.post('/api/jobs', async (req, res) => {
 
     try {
         const { addScrapeJob } = require('./src/queue/scraperQueue');
-        const job = await addScrapeJob(query, params);
+        const job = await addScrapeJob(query, { ...params, datasetId });
 
-        // Ensure a DB record exists initially
         await prisma.job.upsert({
             where: { id: String(job.id) },
             update: {
@@ -541,7 +647,8 @@ app.post('/api/jobs', async (req, res) => {
                 id: String(job.id),
                 query: query,
                 status: 'waiting',
-                params: params ? JSON.stringify(params) : null
+                params: params ? JSON.stringify(params) : null,
+                datasetId,
             }
         });
 
@@ -556,6 +663,9 @@ app.post('/api/jobs', async (req, res) => {
  * POST /api/jobs/batch — submit multiple queries at once
  */
 app.post('/api/jobs/batch', async (req, res) => {
+    const datasetId = requireDatasetId(req, res);
+    if (!datasetId) return;
+
     const { queries, params } = req.body;
 
     if (!queries || !Array.isArray(queries) || queries.length === 0) {
@@ -570,15 +680,15 @@ app.post('/api/jobs/batch', async (req, res) => {
             const trimmedQuery = query.trim();
             if (!trimmedQuery) continue;
 
-            const job = await addScrapeJob(trimmedQuery, params);
+            const job = await addScrapeJob(trimmedQuery, { ...params, datasetId });
 
-            // Ensure a DB record exists initially
             await prisma.job.create({
                 data: {
                     id: String(job.id),
                     query: trimmedQuery,
                     status: 'waiting',
-                    params: params ? JSON.stringify(params) : null
+                    params: params ? JSON.stringify(params) : null,
+                    datasetId,
                 }
             });
             jobs.push(job.id);
@@ -596,8 +706,12 @@ app.post('/api/jobs/batch', async (req, res) => {
  */
 app.delete('/api/jobs/clear', async (req, res) => {
     try {
+        const datasetId = requireDatasetId(req, res);
+        if (!datasetId) return;
+
         await prisma.job.deleteMany({
             where: {
+                datasetId,
                 status: {
                     in: ['completed', 'failed', 'stalled']
                 }
@@ -685,14 +799,15 @@ app.post('/api/jobs/:id/retry', async (req, res) => {
 
         const { addScrapeJob } = require('./src/queue/scraperQueue');
         const params = jobRecord.params ? JSON.parse(jobRecord.params) : {};
-        const bullJob = await addScrapeJob(jobRecord.query, params);
+        const bullJob = await addScrapeJob(jobRecord.query, { ...params, datasetId: jobRecord.datasetId });
 
         await prisma.job.create({
             data: {
                 id: String(bullJob.id),
                 query: jobRecord.query,
                 status: 'waiting',
-                params: jobRecord.params
+                params: jobRecord.params,
+                datasetId: jobRecord.datasetId,
             }
         });
 
@@ -708,8 +823,11 @@ app.post('/api/jobs/:id/retry', async (req, res) => {
  */
 app.post('/api/jobs/requeue-stalled', async (req, res) => {
     try {
+        const datasetId = requireDatasetId(req, res);
+        if (!datasetId) return;
+
         const stalledJobs = await prisma.job.findMany({
-            where: { status: 'stalled' }
+            where: { datasetId, status: 'stalled' }
         });
 
         if (stalledJobs.length === 0) {
@@ -721,23 +839,23 @@ app.post('/api/jobs/requeue-stalled', async (req, res) => {
 
         for (const stalledJob of stalledJobs) {
             const params = stalledJob.params ? JSON.parse(stalledJob.params) : {};
-            const bullJob = await addScrapeJob(stalledJob.query, params);
+            const bullJob = await addScrapeJob(stalledJob.query, { ...params, datasetId: stalledJob.datasetId });
 
             await prisma.job.create({
                 data: {
                     id: String(bullJob.id),
                     query: stalledJob.query,
                     status: 'waiting',
-                    params: stalledJob.params
+                    params: stalledJob.params,
+                    datasetId: stalledJob.datasetId,
                 }
             });
 
             newJobIds.push(bullJob.id);
         }
 
-        // Delete the old stalled job records
         await prisma.job.deleteMany({
-            where: { status: 'stalled' }
+            where: { datasetId, status: 'stalled' }
         });
 
         res.json({ message: `Re-queued ${newJobIds.length} stalled job(s)`, count: newJobIds.length, jobIds: newJobIds });
@@ -752,7 +870,11 @@ app.post('/api/jobs/requeue-stalled', async (req, res) => {
  */
 app.get('/api/jobs', async (req, res) => {
     try {
+        const datasetId = requireDatasetId(req, res);
+        if (!datasetId) return;
+
         const jobs = await prisma.job.findMany({
+            where: { datasetId },
             orderBy: { createdAt: 'desc' }
         });
         res.json(jobs);
@@ -833,10 +955,14 @@ app.post('/api/settings', async (req, res) => {
  */
 app.get('/api/crm/stats', async (req, res) => {
     try {
+        const datasetId = requireDatasetId(req, res);
+        if (!datasetId) return;
+
         const statuses = ['new', 'attempting', 'connected', 'qualified', 'disqualified', 'closed_won', 'closed_lost'];
         const counts = await prisma.lead.groupBy({
             by: ['crmStatus'],
             _count: { crmStatus: true },
+            where: { datasetId },
         });
 
         const statsMap = {};
@@ -847,16 +973,20 @@ app.get('/api/crm/stats', async (req, res) => {
             }
         }
 
-        const totalCalls = await prisma.callLog.count({ where: { type: 'call' } });
+        const leadIds = await prisma.lead.findMany({ where: { datasetId }, select: { id: true } });
+        const leadIdList = leadIds.map(l => l.id);
+
+        const totalCalls = await prisma.callLog.count({ where: { type: 'call', leadId: { in: leadIdList } } });
         const followUpsDueToday = await prisma.lead.count({
             where: {
+                datasetId,
                 nextFollowUp: { lte: new Date(new Date().setHours(23, 59, 59, 999)) },
                 crmStatus: { notIn: ['closed_won', 'closed_lost', 'disqualified'] }
             }
         });
 
-        const demoSites = await prisma.lead.count({ where: { siteStatus: 'demo' } });
-        const fullSites = await prisma.lead.count({ where: { siteStatus: 'full' } });
+        const demoSites = await prisma.lead.count({ where: { datasetId, siteStatus: 'demo' } });
+        const fullSites = await prisma.lead.count({ where: { datasetId, siteStatus: 'full' } });
 
         res.json({ ...statsMap, totalCalls, followUpsDueToday, demoSites, fullSites });
     } catch (err) {
@@ -870,20 +1000,26 @@ app.get('/api/crm/stats', async (req, res) => {
  */
 app.get('/api/crm/analytics', async (req, res) => {
     try {
-        // 1. Pipeline Value grouping by status
+        const datasetId = requireDatasetId(req, res);
+        if (!datasetId) return;
+
         const pipelineValue = await prisma.lead.groupBy({
             by: ['crmStatus'],
             _sum: { estimatedValue: true },
             _count: { id: true },
             where: {
+                datasetId,
                 crmStatus: { notIn: ['disqualified', 'closed_lost'] }
             }
         });
 
-        // 2. Activity counts by type
+        const leadIds = await prisma.lead.findMany({ where: { datasetId }, select: { id: true } });
+        const leadIdList = leadIds.map(l => l.id);
+
         const activities = await prisma.callLog.groupBy({
             by: ['type'],
             _count: { id: true },
+            where: { leadId: { in: leadIdList } },
         });
 
         res.json({ pipelineValue, activities });
@@ -898,8 +1034,12 @@ app.get('/api/crm/analytics', async (req, res) => {
  */
 app.get('/api/crm/tasks', async (req, res) => {
     try {
+        const datasetId = requireDatasetId(req, res);
+        if (!datasetId) return;
+
         const tasks = await prisma.lead.findMany({
             where: {
+                datasetId,
                 nextFollowUp: { lte: new Date(new Date().setHours(23, 59, 59, 999)) },
                 crmStatus: { notIn: ['closed_won', 'closed_lost', 'disqualified'] }
             },
@@ -922,9 +1062,13 @@ app.get('/api/crm/tasks', async (req, res) => {
  */
 app.get('/api/crm/queue', async (req, res) => {
     try {
+        const datasetId = requireDatasetId(req, res);
+        if (!datasetId) return;
+
         const { status = 'all', minScore = '0', limit = '50', siteStatus, search } = req.query;
 
         const where = {
+            datasetId,
             leadScore: { gte: parseInt(minScore) || 0 },
         };
 
@@ -1125,18 +1269,21 @@ const { generateDemoSite } = require('./src/base44/orchestrator');
  */
 app.post('/api/base44/generate', async (req, res) => {
     try {
+        const datasetId = requireDatasetId(req, res);
+        if (!datasetId) return;
+
         const inputData = req.body;
 
         if (!inputData.businessName) {
             return res.status(400).json({ error: 'businessName required' });
         }
 
-        // Create DemoJob record
         const job = await prisma.demoJob.create({
             data: {
                 leadId: inputData.leadId ? parseInt(inputData.leadId) : null,
                 status: 'pending',
                 inputData: inputData,
+                datasetId,
             }
         });
 
@@ -1243,7 +1390,11 @@ app.get('/api/base44/status/:jobId', async (req, res) => {
  */
 app.get('/api/base44/jobs', async (req, res) => {
     try {
+        const datasetId = requireDatasetId(req, res);
+        if (!datasetId) return;
+
         const jobs = await prisma.demoJob.findMany({
+            where: { datasetId },
             orderBy: { createdAt: 'desc' },
             take: 50,
         });

@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { apiGet } from "@/lib/api";
+import { useDataset } from "@/lib/dataset-context";
 import { format, formatDistanceToNow, isToday, isBefore, startOfDay } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -48,11 +49,13 @@ function formatCurrencyTooltip(value: number | string | undefined, label: string
 }
 
 export default function CRMAnalyticsPage() {
+    const { activeDatasetId, buildHref } = useDataset();
     const [pipeline, setPipeline] = useState<PipelineData[]>([]);
     const [activities, setActivities] = useState<ActivityData[]>([]);
     const [loading, setLoading] = useState(true);
 
     const fetchData = useCallback(async () => {
+        if (!activeDatasetId) return;
         setLoading(true);
         try {
             const data = await apiGet<{pipelineValue: PipelineData[], activities: ActivityData[]}>("/api/crm/analytics");
@@ -63,7 +66,7 @@ export default function CRMAnalyticsPage() {
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [activeDatasetId]);
 
     useEffect(() => {
         fetchData();
@@ -101,7 +104,7 @@ export default function CRMAnalyticsPage() {
                 </div>
                 <div className="flex gap-2">
                     <Button variant="outline" asChild size="sm">
-                        <Link href="/crm">Back to Dialer</Link>
+                        <Link href={buildHref("/crm")}>Back to Dialer</Link>
                     </Button>
                     <Button variant="outline" size="sm" onClick={fetchData} className="gap-1.5">
                         <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} /> Refresh
@@ -161,7 +164,7 @@ export default function CRMAnalyticsPage() {
                                 <YAxis tickFormatter={(val) => `R${val}`} width={80} />
                                 <Tooltip
                                     cursor={{ fill: 'rgba(255, 255, 255, 0.05)' }}
-                                    formatter={(value) => formatCurrencyTooltip(value, 'Pipeline Value')}
+                                    formatter={(value) => formatCurrencyTooltip(value as number | string | undefined, 'Pipeline Value')}
                                     contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '8px' }}
                                 />
                                 <Bar dataKey="value" radius={[4, 4, 0, 0]}>
@@ -188,7 +191,7 @@ export default function CRMAnalyticsPage() {
                                 <YAxis dataKey="name" type="category" width={80} tick={{ fontSize: 12 }} />
                                 <Tooltip
                                     cursor={{ fill: 'rgba(255, 255, 255, 0.05)' }}
-                                    formatter={(value: number) => [value, 'Lead Count']}
+                                    formatter={(value) => [value as number, 'Lead Count']}
                                     contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '8px' }}
                                 />
                                 <Bar dataKey="count" radius={[0, 4, 4, 0]}>

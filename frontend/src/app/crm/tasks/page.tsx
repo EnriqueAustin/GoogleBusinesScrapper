@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { apiGet, apiPatch } from "@/lib/api";
+import { useDataset } from "@/lib/dataset-context";
 import { format, formatDistanceToNow, isToday, isBefore, startOfDay } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -25,10 +26,12 @@ interface TaskLead {
 }
 
 export default function CRMTasksPage() {
+    const { activeDatasetId, buildHref } = useDataset();
     const [tasks, setTasks] = useState<TaskLead[]>([]);
     const [loading, setLoading] = useState(true);
 
     const fetchTasks = useCallback(async () => {
+        if (!activeDatasetId) return;
         setLoading(true);
         try {
             const data = await apiGet("/api/crm/tasks");
@@ -38,7 +41,7 @@ export default function CRMTasksPage() {
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [activeDatasetId]);
 
     useEffect(() => {
         fetchTasks();
@@ -66,7 +69,7 @@ export default function CRMTasksPage() {
                 </div>
                 <div className="flex gap-2">
                     <Button variant="outline" asChild size="sm">
-                        <Link href="/crm">Back to Dialer</Link>
+                        <Link href={buildHref("/crm")}>Back to Dialer</Link>
                     </Button>
                     <Button variant="outline" size="sm" onClick={fetchTasks} className="gap-1.5">
                         <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} /> Refresh
@@ -127,7 +130,7 @@ export default function CRMTasksPage() {
                                                     Snooze to Tmrw
                                                 </Button>
                                                 <Button size="sm" asChild className="h-8 gap-1 pl-3 pr-2 bg-primary text-primary-foreground hover:bg-primary/90">
-                                                    <Link href={`/crm`}>
+                                                    <Link href={buildHref("/crm")}>
                                                         Open Dialer <ChevronRight className="h-3.5 w-3.5" />
                                                     </Link>
                                                 </Button>

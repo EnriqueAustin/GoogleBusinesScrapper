@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback } from "react";
 import { apiGet, apiPost, apiDelete, apiPatch, api } from "@/lib/api";
+import { useDataset } from "@/lib/dataset-context";
 import { format, formatDistanceToNow } from "date-fns";
 import {
     Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -109,6 +110,8 @@ interface AuditLog {
 type SortDir = "asc" | "desc";
 
 export default function LeadsPage() {
+    const { activeDatasetId } = useDataset();
+
     // Data
     const [leads, setLeads] = useState<Lead[]>([]);
     const [loading, setLoading] = useState(true);
@@ -186,13 +189,14 @@ export default function LeadsPage() {
         } finally {
             setLoading(false);
         }
-    }, [searchTerm, filterWebsite, minRating, cityFilter, minReviews, maxReviews, minScore, categoryFilter, siteStatusFilter, crmStatusFilter, sortBy, sortDir, page]);
+    }, [searchTerm, filterWebsite, minRating, cityFilter, minReviews, maxReviews, minScore, categoryFilter, siteStatusFilter, crmStatusFilter, sortBy, sortDir, page, activeDatasetId]);
 
-    useEffect(() => { fetchLeads(); }, [fetchLeads]);
+    useEffect(() => { if (activeDatasetId) fetchLeads(); }, [fetchLeads, activeDatasetId]);
 
     useEffect(() => {
+        if (!activeDatasetId) return;
         apiGet<string[]>("/api/leads/categories").then(data => setCategories(data)).catch(() => { });
-    }, []);
+    }, [activeDatasetId]);
 
     // ── Sorting ──────────────────────────────────────────────────────
 

@@ -10,6 +10,18 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model Dataset {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  leads    Lead[]
+  queries  Query[]
+  jobs     Job[]
+  demoJobs DemoJob[]
+}
+
 model Lead {
   id            Int      @id @default(autoincrement())
   name          String
@@ -35,7 +47,7 @@ model Lead {
   updatedAt     DateTime @updatedAt
 
   // CRM Sales Pipeline Fields
-  crmStatus          String   @default("new")     // new | attempting | connected | qualified | disqualified | closed_won | closed_lost
+  crmStatus          String   @default("new")
   callCount          Int      @default(0)
   lastCalledAt       DateTime?
   nextFollowUp       DateTime?
@@ -44,13 +56,17 @@ model Lead {
   setupFee           Float?
   monthlyFee         Float?
   websitePainPoints  String?
-  siteStatus         String   @default("none")     // none | demo | full
+  siteStatus         String   @default("none")
+
+  // Dataset
+  datasetId String
+  dataset   Dataset @relation(fields: [datasetId], references: [id])
 
   // Relations
   logs          LeadLog[]
   calls         CallLog[]
 
-  @@unique([name, address])
+  @@unique([name, address, datasetId])
   @@index([hasWebsite])
   @@index([query])
   @@index([category])
@@ -60,6 +76,7 @@ model Lead {
   @@index([crmStatus])
   @@index([nextFollowUp])
   @@index([siteStatus])
+  @@index([datasetId])
 }
 
 model LeadLog {
@@ -90,8 +107,14 @@ model CallLog {
 
 model Query {
   id        String   @id @default(uuid())
-  query     String   @unique
+  query     String
   scrapedAt DateTime @default(now())
+
+  datasetId String
+  dataset   Dataset @relation(fields: [datasetId], references: [id])
+
+  @@unique([query, datasetId])
+  @@index([datasetId])
 }
 
 model Job {
@@ -104,6 +127,11 @@ model Job {
   createdAt    DateTime  @default(now())
   startedAt    DateTime?
   completedAt  DateTime?
+
+  datasetId String
+  dataset   Dataset @relation(fields: [datasetId], references: [id])
+
+  @@index([datasetId])
 }
 
 model Setting {
@@ -114,10 +142,15 @@ model Setting {
 model DemoJob {
   id          String    @id @default(uuid())
   leadId      Int?
-  status      String    @default("pending")   // pending | running | completed | failed
+  status      String    @default("pending")
   finalPath   String?
   error       String?
   inputData   Json
   createdAt   DateTime  @default(now())
   completedAt DateTime?
+
+  datasetId String
+  dataset   Dataset @relation(fields: [datasetId], references: [id])
+
+  @@index([datasetId])
 }

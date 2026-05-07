@@ -26,10 +26,15 @@ const { log, humanDelay } = require('./utils');
 // ── Worker Setup ─────────────────────────────────────────────────────
 const scraperWorker = new Worker('scraperQueue', async (job) => {
     const { query, params } = job.data;
-    log('info', `\n==== Worker started job ${job.id} for query: "${query}" ====`);
+    const datasetId = params?.datasetId;
+    log('info', `\n==== Worker started job ${job.id} for query: "${query}" (dataset: ${datasetId}) ====`);
+
+    if (!datasetId) {
+        log('error', `Job ${job.id} missing datasetId — cannot proceed`);
+        throw new Error('Missing datasetId in job params');
+    }
 
     try {
-        // 1. Mark job as active in DB (server.js already created it with 'waiting')
         await prisma.job.upsert({
             where: { id: String(job.id) },
             update: {
@@ -41,7 +46,8 @@ const scraperWorker = new Worker('scraperQueue', async (job) => {
                 query: query,
                 status: 'active',
                 startedAt: new Date(),
-                params: params ? JSON.stringify(params) : null
+                params: params ? JSON.stringify(params) : null,
+                datasetId,
             }
         });
 
@@ -84,12 +90,11 @@ const scraperWorker = new Worker('scraperQueue', async (job) => {
 
         // 4. Save and Update
         if (leads.length > 0) {
-            await saveLeads(leads);
-            // Mark the query itself as completed
-            await markQueryCompletedAsync(query);
+            await saveLeads(leads, datasetId);
+            await markQueryCompletedAsync(query, datasetId);
         } else {
             log('warn', `No results found for "${query}"`);
-            await markQueryCompletedAsync(query);
+            await markQueryCompletedAsync(query, datasetId);
         }
 
         // 5. Mark job as completed

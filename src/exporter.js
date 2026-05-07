@@ -22,12 +22,15 @@ function ensureOutputDir() {
 /**
  * Save leads locally and to the PostgreSQL database via Prisma
  */
-async function saveLeads(newLeads) {
+async function saveLeads(newLeads, datasetId) {
     if (!newLeads || newLeads.length === 0) return [];
+    if (!datasetId) {
+        log('error', 'saveLeads called without datasetId — skipping');
+        return [];
+    }
 
     let savedCount = 0;
 
-    // Save to Postgres (upsert based on name + address)
     for (const lead of newLeads) {
         try {
             // Parse rating to Float
@@ -66,12 +69,12 @@ async function saveLeads(newLeads) {
             else if (reviewInt && reviewInt >= 50) score += 5;
             score = Math.max(0, Math.min(100, score));
 
-            // Check existing query to append, rather than overwrite
             const existingLead = await prisma.lead.findUnique({
                 where: {
-                    name_address: {
+                    name_address_datasetId: {
                         name: lead.name,
-                        address: lead.address || 'N/A'
+                        address: lead.address || 'N/A',
+                        datasetId,
                     }
                 },
                 select: { query: true }
@@ -90,9 +93,10 @@ async function saveLeads(newLeads) {
 
             await prisma.lead.upsert({
                 where: {
-                    name_address: {
+                    name_address_datasetId: {
                         name: lead.name,
-                        address: lead.address || 'N/A'
+                        address: lead.address || 'N/A',
+                        datasetId,
                     }
                 },
                 update: {
@@ -127,6 +131,7 @@ async function saveLeads(newLeads) {
                     techStack: lead.techStack,
                     seoStatus: lead.seoStatus,
                     query: lead.query,
+                    datasetId,
                 }
             });
             savedCount++;
@@ -227,12 +232,16 @@ function loadCompletedQueries() {
 /**
  * Mark a query as completed in the DB
  */
-async function markQueryCompletedAsync(query) {
+async function markQueryCompletedAsync(query, datasetId) {
+    if (!datasetId) {
+        log('error', 'markQueryCompletedAsync called without datasetId — skipping');
+        return;
+    }
     try {
         await prisma.query.upsert({
-            where: { query },
+            where: { query_datasetId: { query, datasetId } },
             update: {},
-            create: { query }
+            create: { query, datasetId }
         });
     } catch (err) {
         log('error', `Failed to mark query completed in DB: ${err.message}`);

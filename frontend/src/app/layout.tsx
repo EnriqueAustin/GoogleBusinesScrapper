@@ -1,7 +1,9 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
+import { Suspense } from 'react';
 import './globals.css';
 import Navbar from '@/components/Navbar';
+import { DatasetProvider } from '@/lib/dataset-context';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -18,14 +20,14 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body className={`${inter.className} min-h-screen bg-background text-foreground flex flex-col`}>
+        <Suspense>
+        <DatasetProvider>
         <Navbar />
 
-        {/* Main Content Area */}
         <main className="flex-1 container mx-auto px-3 py-4 sm:px-4 sm:py-8 overflow-x-hidden">
           {children}
         </main>
 
-        {/* Unregister rogue service workers from other local projects */}
         <script dangerouslySetInnerHTML={{
           __html: `
             if ('serviceWorker' in navigator) {
@@ -39,6 +41,8 @@ export default function RootLayout({
             }
           `
         }} />
+        </DatasetProvider>
+        </Suspense>
       </body>
     </html>
   );

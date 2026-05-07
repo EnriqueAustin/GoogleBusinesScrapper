@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { apiGet } from "@/lib/api";
+import { useDataset } from "@/lib/dataset-context";
 import {
   Card,
   CardContent,
@@ -32,11 +33,14 @@ interface Stats {
 }
 
 export default function OverviewPage() {
+  const { activeDatasetId, loading: dsLoading } = useDataset();
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!activeDatasetId) return;
     const fetchStats = async () => {
+      setLoading(true);
       try {
         const data = await apiGet<Stats>("/api/stats");
         setStats(data);
@@ -47,7 +51,7 @@ export default function OverviewPage() {
       }
     };
     fetchStats();
-  }, []);
+  }, [activeDatasetId]);
 
   if (loading) {
     return (
