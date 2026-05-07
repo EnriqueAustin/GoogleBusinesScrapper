@@ -15,6 +15,7 @@ const config = {
   // --- Scraper Features ---
   features: {
     enrichWebsitesDuringScrape: true, // Set to true to scan websites automatically
+    onlyWithoutWebsite: false,
   },
 
   // --- Scraping Limits ---

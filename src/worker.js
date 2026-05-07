@@ -67,22 +67,39 @@ const scraperWorker = new Worker('scraperQueue', async (job) => {
             if (s.maxResultsPerQuery !== undefined) config.limits.maxResultsPerQuery = parseInt(s.maxResultsPerQuery, 10);
             if (s.maxScrollAttempts !== undefined) config.limits.maxScrollAttempts = parseInt(s.maxScrollAttempts, 10);
             if (s.enrichWebsitesDuringScrape !== undefined) config.features.enrichWebsitesDuringScrape = s.enrichWebsitesDuringScrape === "true" || s.enrichWebsitesDuringScrape === true;
+            if (s.onlyWithoutWebsite !== undefined) config.features.onlyWithoutWebsite = s.onlyWithoutWebsite === "true" || s.onlyWithoutWebsite === true;
 
             log('info', `Applied Dynamic Settings from DB: ${JSON.stringify(s)}`);
         } catch (e) {
             log('warn', `Failed to apply dynamic settings, using default config.js. Error: ${e.message}`);
         }
 
-        // 2. Scrape
-        const leads = await scrapeGoogleMaps(query);
+        // 2. Scrape (with a hard timeout so a hung browser can't block the queue)
+        const SCRAPE_TIMEOUT = 20 * 60 * 1000; // 20 minutes max per job
+        let leads;
+        try {
+            leads = await Promise.race([
+                scrapeGoogleMaps(query),
+                new Promise((_, reject) =>
+                    setTimeout(() => reject(new Error('Scrape timed out after 20 minutes')), SCRAPE_TIMEOUT)
+                ),
+            ]);
+        } catch (timeoutErr) {
+            log('error', `Job ${job.id}: ${timeoutErr.message}`);
+            throw timeoutErr;
+        }
 
         // 3. Optional Enrichment
         if (config.features && config.features.enrichWebsitesDuringScrape) {
             log('info', `Enriching websites for query "${query}"...`);
             for (let j = 0; j < leads.length; j++) {
                 if (leads[j].hasWebsite && leads[j].website !== 'None') {
-                    const enrichment = await enrichWebsite(leads[j].website);
-                    leads[j] = { ...leads[j], ...enrichment };
+                    try {
+                        const enrichment = await enrichWebsite(leads[j].website);
+                        leads[j] = { ...leads[j], ...enrichment };
+                    } catch (enrichErr) {
+                        log('warn', `Enrichment failed for ${leads[j].website}: ${enrichErr.message}`);
+                    }
                     await humanDelay(1, 2);
                 }
             }
@@ -134,20 +151,24 @@ const scraperWorker = new Worker('scraperQueue', async (job) => {
 }, {
     connection,
     concurrency: 1,
-    lockDuration: 600000,      // 10 minutes — scrapes are long-running
-    lockRenewTime: 60000,      // Renew lock every 60 seconds
-    stalledInterval: 300000,   // Check for stalled jobs every 5 minutes
-    maxStalledCount: 0,        // Do NOT auto-retry stalled jobs — mark as stalled instead
+    lockDuration: 1800000,     // 30 minutes — scrapes + enrichment can be very long
+    lockRenewTime: 30000,      // Renew lock every 30 seconds to keep job alive
+    stalledInterval: 600000,   // Check for stalled jobs every 10 minutes
+    maxStalledCount: 1,        // Allow 1 stall recovery before giving up
 });
 
 // ── Worker Lifecycle Events ──────────────────────────────────────────
 
-scraperWorker.on('completed', (job, result) => {
+scraperWorker.on('completed', async (job, result) => {
     log('success', `Job ${job.id} completed with result: ${JSON.stringify(result)}`);
+    // Brief cooldown between jobs to let browser processes fully exit
+    await humanDelay(5, 10);
 });
 
-scraperWorker.on('failed', (job, err) => {
+scraperWorker.on('failed', async (job, err) => {
     log('error', `Job ${job.id} failed: ${err.message}`);
+    // Brief cooldown so the next queued job doesn't start on a hot system
+    await humanDelay(5, 10);
 });
 
 scraperWorker.on('stalled', async (jobId) => {

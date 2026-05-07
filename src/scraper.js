@@ -18,6 +18,32 @@ const {
 chromium.use(stealth());
 
 /**
+ * Parse a search query into { businessType, location } when it contains
+ * location keywords like "in", "near", or a trailing comma-separated place.
+ * Returns { businessType, location } or null if no location detected.
+ */
+function extractLocationFromQuery(query) {
+    const locationPatterns = [
+        /^(.+?)\s+in\s+(.+)$/i,
+        /^(.+?)\s+near\s+(.+)$/i,
+        /^(.+?)\s+around\s+(.+)$/i,
+        /^(.+?),\s*(.+)$/,
+    ];
+
+    for (const pattern of locationPatterns) {
+        const match = query.match(pattern);
+        if (match) {
+            const businessType = match[1].trim();
+            const location = match[2].trim();
+            if (businessType.length > 1 && location.length > 1) {
+                return { businessType, location };
+            }
+        }
+    }
+    return null;
+}
+
+/**
  * Scroll the results feed panel until we hit the end or max scroll attempts
  */
 async function scrollResults(page) {
@@ -337,13 +363,43 @@ async function scrapeGoogleMaps(query, maxResults) {
             return results;
         }
 
-        // Type the search query
-        log('info', 'Typing search query...');
-        await searchBox.click();
-        await humanDelay(0.5, 1.5);
-        await humanTypeIntoElement(searchBox, query);
-        await humanDelay(0.5, 1);
-        await searchBox.press('Enter');
+        // Parse the query for a location component
+        const parsed = extractLocationFromQuery(query);
+        let targetLocation = null;
+
+        if (parsed) {
+            // Two-step search: first zoom into the location, then search business type
+            log('info', `Location detected: "${parsed.location}" — zooming in first, then searching "${parsed.businessType}"`);
+
+            // Step 1: Search for just the location to centre the map
+            await searchBox.click();
+            await humanDelay(0.5, 1.5);
+            await humanTypeIntoElement(searchBox, parsed.location);
+            await humanDelay(0.5, 1);
+            await searchBox.press('Enter');
+
+            const locDelay = config.delays.afterSearch;
+            await humanDelay(locDelay.min, locDelay.max);
+
+            // Step 2: Clear and search for the business type (map stays zoomed)
+            await searchBox.click();
+            await humanDelay(0.3, 0.8);
+            await page.keyboard.press('Control+A');
+            await humanDelay(0.2, 0.5);
+            await humanTypeIntoElement(searchBox, `${parsed.businessType} in ${parsed.location}`);
+            await humanDelay(0.5, 1);
+            await searchBox.press('Enter');
+
+            targetLocation = parsed.location;
+        } else {
+            // No location found — search as-is
+            log('info', 'Typing search query...');
+            await searchBox.click();
+            await humanDelay(0.5, 1.5);
+            await humanTypeIntoElement(searchBox, query);
+            await humanDelay(0.5, 1);
+            await searchBox.press('Enter');
+        }
 
         const d = config.delays.afterSearch;
         await humanDelay(d.min, d.max);
@@ -407,6 +463,12 @@ async function scrapeGoogleMaps(query, maxResults) {
                 const data = await extractListingData(page, query);
 
                 if (data.name !== 'N/A') {
+                    // Skip leads with a website when onlyWithoutWebsite is enabled
+                    if (config.features.onlyWithoutWebsite && data.hasWebsite) {
+                        log('info', `[Card ${i + 1}] Skipping (has website): ${data.name}`);
+                        continue;
+                    }
+
                     // Deduplicate within this scrape session using name + address
                     const dedupKey = `${data.name}|${data.address}`;
                     if (seenBusinesses.has(dedupKey)) {
@@ -469,4 +531,4 @@ async function scrapeGoogleMaps(query, maxResults) {
 // Need chalk for the colored status in the scrape loop
 const chalk = require('chalk');
 
-module.exports = { scrapeGoogleMaps };
+module.exports = { scrapeGoogleMaps, extractLocationFromQuery };

@@ -12,6 +12,7 @@ export default function SettingsPage() {
     const [settings, setSettings] = useState({
         headless: "false",
         enrichWebsitesDuringScrape: "false",
+        onlyWithoutWebsite: "false",
         maxResultsPerQuery: 30,
         maxScrollAttempts: 15,
         proxyUrl: "",
@@ -27,6 +28,7 @@ export default function SettingsPage() {
                     ...prev,
                     headless: dbSettings.headless ?? prev.headless,
                     enrichWebsitesDuringScrape: dbSettings.enrichWebsitesDuringScrape ?? prev.enrichWebsitesDuringScrape,
+                    onlyWithoutWebsite: dbSettings.onlyWithoutWebsite ?? prev.onlyWithoutWebsite,
                     maxResultsPerQuery: dbSettings.maxResultsPerQuery ?? prev.maxResultsPerQuery,
                     maxScrollAttempts: dbSettings.maxScrollAttempts ?? prev.maxScrollAttempts,
                     proxyUrl: dbSettings.proxyUrl ?? prev.proxyUrl,
@@ -139,6 +141,20 @@ export default function SettingsPage() {
                             />
                             <label htmlFor="enrich" className="text-sm text-muted-foreground">
                                 Automatically scrape website contents for socials and emails <i>during</i> the Maps scraping phase. (Warning: Makes scraping significantly slower).
+                            </label>
+                        </div>
+                    </div>
+
+                    <div className="space-y-3 pt-4 border-t">
+                        <label className="text-sm font-medium">Only Leads Without Website</label>
+                        <div className="flex items-center gap-2">
+                            <Checkbox
+                                id="onlyWithoutWebsite"
+                                checked={settings.onlyWithoutWebsite === "true"}
+                                onCheckedChange={(c) => handleChange("onlyWithoutWebsite", c ? "true" : "false")}
+                            />
+                            <label htmlFor="onlyWithoutWebsite" className="text-sm text-muted-foreground">
+                                Skip businesses that have a website and only collect leads without one.
                             </label>
                         </div>
                     </div>
